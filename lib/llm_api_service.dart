@@ -12,21 +12,32 @@ class LLMApiService {
 
   Future<Map<String, dynamic>?> generateStructuredOutput(String userCommand) async {
     // This is the core instruction for the LLM, defining its role and expected output format.
-    // Cleaned up leading whitespace for better JSON compatibility.
-    final String systemInstruction = '''You are a UI modification assistant. Your task is to interpret user commands and generate a JSON object that describes the UI changes.
-    
+    // This system instruction has been significantly expanded to cover all new features.
+    final String systemInstruction = '''You are a UI modification and management assistant. Your task is to interpret user commands and generate a JSON object that describes either a UI change or an application management action.
+
+For UI changes, the JSON should have "component", "property", "value", and optionally "operation".
+For application management actions (like saving/loading presets), the JSON should have "commandType" and other relevant fields.
+
 The UI consists of a profile card with the following modifiable elements:
 - profileCard: backgroundColor (hex string like "0xFFRRGGBB"), borderRadius (double)
 - profileImage: borderRadius (double), size (double for width/height)
-- nameText: fontSize (double), fontWeight (string: "bold" or "normal"), textColor (hex string like "0xFFRRGGBB")
-- titleText: fontSize (double), textColor (hex string like "0xFFRRGGBB"), isVisible (boolean: true/false)
-- bioText: fontSize (double), textColor (hex string like "0xFFRRGGBB")
+- nameText: content (string), fontSize (double), fontWeight (string: "bold" or "normal"), textColor (hex string like "0xFFRRGGBB"), textAlign (string: "left", "center", "right", "justify", "start", "end")
+- titleText: content (string), fontSize (double), textColor (hex string like "0xFFRRGGBB"), isVisible (boolean: true/false), textAlign (string: "left", "center", "right", "justify", "start", "end")
+- bioText: content (string), fontSize (double), textColor (hex string like "0xFFRRGGBB"), textAlign (string: "left", "center", "right", "justify", "start", "end")
+- colorBox: backgroundColor (hex string like "0xFFRRGGBB"), size (double for width/height)
+- button: content (string), backgroundColor (hex string like "0xFFRRGGBB"), textColor (hex string like "0xFFRRGGBB"), borderRadius (double)
+- toggleSwitch: value (boolean: true/false), activeColor (hex string like "0xFFRRGGBB"), inactiveThumbColor (hex string like "0xFFRRGGBB")
+- mainColumn: mainAxisAlignment (string: "start", "center", "end", "spaceBetween", "spaceAround", "spaceEvenly")
+- slider: value (double, 0.0-1.0), min (double), max (double), activeColor (hex string), inactiveColor (hex string)
+- progressIndicator: value (double, 0.0-1.0), color (hex string), backgroundColor (hex string)
+- imageGallery: currentImageIndex (integer), autoPlay (boolean), nextImage (special property for advancing), prevImage (special property for going back)
 
 Supported commands and their corresponding JSON structure examples:
 - "make picture square": {"component": "profileImage", "property": "borderRadius", "value": 0.0}
 - "make picture round": {"component": "profileImage", "property": "borderRadius", "value": 50.0}
 - "change card background to lightblue": {"component": "profileCard", "property": "backgroundColor", "value": "0xFFADD8E6"}
 - "increase name font size": {"component": "nameText", "property": "fontSize", "operation": "add", "value": 4.0}
+- "decrease bio font size": {"component": "bioText", "property": "fontSize", "operation": "subtract", "value": 2.0}
 - "hide title": {"component": "titleText", "property": "isVisible", "value": false}
 - "show title": {"component": "titleText", "property": "isVisible", "value": true}
 - "set name font size to 30": {"component": "nameText", "property": "fontSize", "value": 30.0}
@@ -35,14 +46,60 @@ Supported commands and their corresponding JSON structure examples:
 - "set profile image size to 120": {"component": "profileImage", "property": "size", "value": 120.0}
 - "make name bold": {"component": "nameText", "property": "fontWeight", "value": "bold"}
 - "make name normal weight": {"component": "nameText", "property": "fontWeight", "value": "normal"}
+- "change name to 'Alice Wonderland'": {"component": "nameText", "property": "content", "value": "Alice Wonderland"}
+- "set bio text to 'A creative individual.'": {"component": "bioText", "property": "content", "value": "A creative individual."}
+- "make the box red": {"component": "colorBox", "property": "backgroundColor", "value": "0xFFFF0000"}
+- "make the box bigger": {"component": "colorBox", "property": "size", "operation": "add", "value": 20.0}
+- "make the box smaller": {"component": "colorBox", "property": "size", "operation": "subtract", "value": 10.0}
+- "set the box size to 80": {"component": "colorBox", "property": "size", "value": 80.0}
+- "update title to 'Senior Designer'": {"component": "titleText", "property": "content", "value": "Senior Designer"}
+- "set name to 'John Smith'": {"component": "nameText", "property": "content", "value": "John Smith"}
+- "change bio to 'Passionate about AI and Flutter development.'": {"component": "bioText", "property": "content", "value": "Passionate about AI and Flutter development."}
+- "make the button green": {"component": "button", "property": "backgroundColor", "value": "0xFF00FF00"}
+- "change button text to 'Click Me'": {"component": "button", "property": "content", "value": "Click Me"}
+- "make button corners round": {"component": "button", "property": "borderRadius", "value": 20.0}
+- "align bio text to center": {"component": "bioText", "property": "textAlign", "value": "center"}
+- "align name to left": {"component": "nameText", "property": "textAlign", "value": "left"}
+- "turn on the switch": {"component": "toggleSwitch", "property": "value", "value": true}
+- "turn off the switch": {"component": "toggleSwitch", "property": "value", "value": false}
+- "change switch color to red": {"component": "toggleSwitch", "property": "activeColor", "value": "0xFFFF0000"}
+
+// Layout Control Examples
+- "center all elements vertically": {"component": "mainColumn", "property": "mainAxisAlignment", "value": "center"}
+- "move everything to the top": {"component": "mainColumn", "property": "mainAxisAlignment", "value": "start"}
+- "distribute elements evenly": {"component": "mainColumn", "property": "mainAxisAlignment", "value": "spaceEvenly"}
+
+// Preset Management Examples
+- "save current layout as 'My First Design'": {"commandType": "savePreset", "presetName": "My First Design"}
+- "load layout 'My First Design'": {"commandType": "loadPreset", "presetName": "My First Design"}
+
+// New: Slider Examples
+- "set slider value to 0.7": {"component": "slider", "property": "value", "value": 0.7}
+- "set slider min to 0.1": {"component": "slider", "property": "min", "value": 0.1}
+- "set slider max to 2.0": {"component": "slider", "property": "max", "value": 2.0}
+- "change slider color to orange": {"component": "slider", "property": "activeColor", "value": "0xFFFFA500"}
+- "change slider inactive color to light grey": {"component": "slider", "property": "inactiveColor", "value": "0xFFD3D3D3"}
+
+// New: Progress Indicator Examples
+- "set progress to 50%": {"component": "progressIndicator", "property": "value", "value": 0.5}
+- "make progress bar blue": {"component": "progressIndicator", "property": "color", "value": "0xFF0000FF"}
+- "change progress background to light green": {"component": "progressIndicator", "property": "backgroundColor", "value": "0xFF90EE90"}
+
+// New: Image Gallery Examples
+- "show next image": {"component": "imageGallery", "property": "nextImage", "value": true} // Value can be ignored
+- "show previous image": {"component": "imageGallery", "property": "prevImage", "value": true} // Value can be ignored
+- "start image slideshow": {"component": "imageGallery", "property": "autoPlay", "value": true}
+- "stop image slideshow": {"component": "imageGallery", "property": "autoPlay", "value": false}
+- "show image 2": {"component": "imageGallery", "property": "currentImageIndex", "value": 1} // 0-indexed
+
 
 Colors should always be returned as 10-character hex strings (e.g., "0xFFRRGGBB").
 For operations like "increase" or "decrease", use "operation": "add" or "operation": "subtract" and the value to apply.
 Ensure the JSON is perfectly valid and contains only one instruction per command.
-If a command is not understood or cannot be mapped to a single, clear UI change, return an empty JSON object: {}.
+If a command is not understood or cannot be mapped to a single, clear UI change or application action, return an empty JSON object: {}.
 
 JSON Output:
-'''.trim(); // Added .trim() to remove any leading/trailing whitespace from the entire string
+'''.trim();
 
     final requestBody = {
       'model': _model,
@@ -52,7 +109,7 @@ JSON Output:
       ],
       'temperature': 1.0,
       'top_p': 1.0,
-      'response_format': {'type': 'json_object'} // Re-added this for explicit JSON request
+      'response_format': {'type': 'json_object'} // Explicitly request JSON output
     };
 
     // Print the encoded body for debugging purposes
@@ -106,4 +163,3 @@ Color? parseHexColor(String hexColor) {
   print('Hex color string does not start with "0x" or has incorrect length: $hexColor');
   return null;
 }
-
