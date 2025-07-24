@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_ui_playground_flutter/llm_api_service.dart'; // Import your LLM service
 
 void main() {
   runApp(const MyApp());
@@ -51,6 +52,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   // Controller for the text input field
   final TextEditingController _commandController = TextEditingController();
+  final LLMApiService _llmService = LLMApiService(); // Instantiate your LLM service
+
+  bool _isLoading = false; // To show loading indicator during API call
 
   @override
   void initState() {
@@ -94,50 +98,119 @@ class _MyHomePageState extends State<MyHomePage> {
     _showMessage('UI has been reset.', success: true);
   }
 
-  // --- Mocked Prompt Handling ---
-  void _handleCommand() {
-    final command = _commandController.text.toLowerCase().trim();
-    bool commandHandled = true;
+  // --- LLM-Powered Command Handling ---
+  Future<void> _handleCommand() async {
+    final command = _commandController.text.trim();
+    if (command.isEmpty) {
+      _showMessage('Please enter a command.', success: false);
+      return;
+    }
 
-    setState(() { // Use setState to trigger UI updates
-      switch (command) {
-        case 'make picture square':
-          _profileImageBorderRadius = 0.0;
-          break;
-        case 'make picture round':
-          _profileImageBorderRadius = _profileImageSize / 2; // Make it perfectly round
-          break;
-        case 'change card background to lightblue':
-          _profileCardBackgroundColor = Colors.lightBlue[100]!;
-          break;
-        case 'increase name font size':
-          _nameFontSize += 4.0;
-          break;
-        case 'hide title':
-          _isTitleVisible = false;
-          break;
-        case 'show title':
-          _isTitleVisible = true;
-          break;
-        case 'reset ui':
-          _resetUI(); // Call the dedicated reset function
-          commandHandled = true; // Handled by reset, no need for default message
-          return; // Exit setState early as reset will handle its own state update
-        default:
-          commandHandled = false;
-          break;
-      }
+    // Handle 'reset ui' command locally for immediate feedback
+    if (command.toLowerCase() == 'reset ui') {
+      _resetUI();
+      return;
+    }
+
+    setState(() {
+      _isLoading = true; // Show loading indicator
     });
 
-    if (commandHandled) {
+    try {
+      final Map<String, dynamic>? instruction =
+      await _llmService.generateStructuredOutput(command);
+
+      setState(() { // Update UI based on LLM's instruction
+        if (instruction != null && instruction.isNotEmpty) {
+          _applyInstruction(instruction);
+          _showMessage('Command applied!', success: true);
+        } else {
+          _showMessage('LLM did not understand the command or returned invalid output. Please rephrase.', success: false);
+        }
+      });
+    } catch (e) {
+      _showMessage('Error processing command: $e', success: false);
+      print('Command processing error: $e');
+    } finally {
+      setState(() {
+        _isLoading = false; // Hide loading indicator
+      });
       _commandController.clear();
-      _showMessage('Command applied!', success: true);
-    } else {
-      _showMessage(
-          'Unknown command. Try:\n- make picture square\n- make picture round\n- change card background to lightblue\n- increase name font size\n- hide title\n- show title\n- reset ui',
-          success: false);
     }
   }
+
+  void _applyInstruction(Map<String, dynamic> instruction) {
+    final String? component = instruction['component'];
+    final String? property = instruction['property'];
+    final dynamic value = instruction['value'];
+    final String? operation = instruction['operation']; // For operations like "add"
+
+    if (component == null || property == null || value == null) {
+      print('Invalid instruction format: $instruction');
+      _showMessage('Invalid instruction from LLM.', success: false);
+      return;
+    }
+
+    // Apply changes based on the component and property
+    switch (component) {
+      case 'profileImage':
+        if (property == 'borderRadius' && value is double) {
+          _profileImageBorderRadius = value;
+        } else if (property == 'size' && value is double) {
+          _profileImageSize = value;
+        }
+        break;
+      case 'profileCard':
+        if (property == 'backgroundColor' && value is String) {
+          final Color? newColor = parseHexColor(value);
+          if (newColor != null) {
+            _profileCardBackgroundColor = newColor;
+          }
+        } else if (property == 'borderRadius' && value is double) {
+          _profileCardBorderRadius = value;
+        }
+        break;
+      case 'nameText':
+        if (property == 'fontSize' && value is double) {
+          _nameFontSize = (operation == 'add') ? (_nameFontSize + value) : value;
+        } else if (property == 'fontWeight' && value is String) {
+          if (value.toLowerCase() == 'bold') _nameFontWeight = FontWeight.bold;
+          if (value.toLowerCase() == 'normal') _nameFontWeight = FontWeight.normal;
+        } else if (property == 'textColor' && value is String) {
+          final Color? newColor = parseHexColor(value);
+          if (newColor != null) {
+            _nameTextColor = newColor;
+          }
+        }
+        break;
+      case 'titleText':
+        if (property == 'fontSize' && value is double) {
+          _titleFontSize = (operation == 'add') ? (_titleFontSize + value) : value;
+        } else if (property == 'textColor' && value is String) {
+          final Color? newColor = parseHexColor(value);
+          if (newColor != null) {
+            _titleTextColor = newColor;
+          }
+        } else if (property == 'isVisible' && value is bool) {
+          _isTitleVisible = value;
+        }
+        break;
+      case 'bioText':
+        if (property == 'fontSize' && value is double) {
+          _bioFontSize = (operation == 'add') ? (_bioFontSize + value) : value;
+        } else if (property == 'textColor' && value is String) {
+          final Color? newColor = parseHexColor(value);
+          if (newColor != null) {
+            _bioTextColor = newColor;
+          }
+        }
+        break;
+      default:
+        print('Unknown component: $component');
+        _showMessage('LLM requested change for unknown component: $component', success: false);
+    }
+  }
+
 
   void _showMessage(String message, {bool success = true}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -153,7 +226,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mobile UI Playground'),
+        title: const Text('Flutter UI Playground'),
         centerTitle: true,
       ),
       body: Padding(
@@ -258,7 +331,9 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  ElevatedButton(
+                  _isLoading
+                      ? const CircularProgressIndicator() // Show loading spinner
+                      : ElevatedButton(
                     onPressed: _handleCommand,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
