@@ -6,17 +6,23 @@ class LLMApiService {
   // IMPORTANT: For production applications, never hardcode API keys directly in client-side code.
   // Consider using environment variables, a secure backend proxy, or Flutter's build configurations
   // to manage sensitive keys. This is for demonstration purposes only.
-  final String _apiKey = 'you api ke'; // Your Azure API Key (equivalent to token in JS example)
-  final String _apiBaseUrl = 'https://models.github.ai/inference'; // Azure OpenAI API base URL from the example
-  final String _model = 'openai/gpt-4.1-nano'; // Model name from the JavaScript example
+  final String _apiKey =
+      ''; // Your Azure API Key (equivalent to token in JS example)
+  final String _apiBaseUrl =
+      'https://models.github.ai/inference'; // Azure OpenAI API base URL from the example
+  final String _model =
+      'openai/gpt-4.1-nano'; // Model name from the JavaScript example
 
-  Future<Map<String, dynamic>?> generateStructuredOutput(String userCommand) async {
+  Future<Map<String, dynamic>?> generateStructuredOutput(
+      String userCommand,
+      ) async {
     // This is the core instruction for the LLM, defining its role and expected output format.
     // This system instruction has been significantly expanded to cover all new features.
-    final String systemInstruction = '''You are a UI modification and management assistant. Your task is to interpret user commands and generate a JSON object that describes either a UI change or an application management action.
+    final String systemInstruction =
+    '''You are a UI modification and management assistant. Your task is to interpret user commands and generate a JSON object that describes either a UI change or an application management action.
 
-For UI changes, the JSON should have "component", "property", "value", and optionally "operation".
-For application management actions (like saving/loading presets), the JSON should have "commandType" and other relevant fields.
+For UI changes, the JSON should have "component", "property", "value", and optionally "operation" and "targetIndex". The "targetIndex" is a 1-based integer that specifies which instance of a dynamic widget to modify (e.g., 1 for the first, 2 for the second). If not specified, assume targetIndex is 1.
+For application management actions (like saving/loading presets or adding new widgets), the JSON should have "commandType" and other relevant fields.
 
 The UI consists of a profile card with the following modifiable elements:
 - profileCard: backgroundColor (hex string like "0xFFRRGGBB"), borderRadius (double)
@@ -31,6 +37,8 @@ The UI consists of a profile card with the following modifiable elements:
 - slider: value (double, 0.0-1.0), min (double), max (double), activeColor (hex string), inactiveColor (hex string)
 - progressIndicator: value (double, 0.0-1.0), color (hex string), backgroundColor (hex string)
 - imageGallery: currentImageIndex (integer), autoPlay (boolean), nextImage (special property for advancing), prevImage (special property for going back)
+- textField: initialText (string), hintText (string), textColor (hex string), fontSize (double), borderColor (hex string), borderRadius (double), focusedBorderColor (hex string)
+
 
 Supported commands and their corresponding JSON structure examples:
 - "make picture square": {"component": "profileImage", "property": "borderRadius", "value": 0.0}
@@ -49,8 +57,8 @@ Supported commands and their corresponding JSON structure examples:
 - "change name to 'Alice Wonderland'": {"component": "nameText", "property": "content", "value": "Alice Wonderland"}
 - "set bio text to 'A creative individual.'": {"component": "bioText", "property": "content", "value": "A creative individual."}
 - "make the box red": {"component": "colorBox", "property": "backgroundColor", "value": "0xFFFF0000"}
-- "make the box bigger": {"component": "colorBox", "property": "size", "operation": "add", "value": 20.0}
-- "make the box smaller": {"component": "colorBox", "property": "size", "operation": "subtract", "value": 10.0}
+- "make the box bigger": {"component": "colorBox", "operation": "add", "value": 20.0}
+- "make the box smaller": {"component": "colorBox", "operation": "subtract", "value": 10.0}
 - "set the box size to 80": {"component": "colorBox", "property": "size", "value": 80.0}
 - "update title to 'Senior Designer'": {"component": "titleText", "property": "content", "value": "Senior Designer"}
 - "set name to 'John Smith'": {"component": "nameText", "property": "content", "value": "John Smith"}
@@ -73,24 +81,38 @@ Supported commands and their corresponding JSON structure examples:
 - "save current layout as 'My First Design'": {"commandType": "savePreset", "presetName": "My First Design"}
 - "load layout 'My First Design'": {"commandType": "loadPreset", "presetName": "My First Design"}
 
-// New: Slider Examples
+// Slider Examples
 - "set slider value to 0.7": {"component": "slider", "property": "value", "value": 0.7}
 - "set slider min to 0.1": {"component": "slider", "property": "min", "value": 0.1}
 - "set slider max to 2.0": {"component": "slider", "property": "max", "value": 2.0}
 - "change slider color to orange": {"component": "slider", "property": "activeColor", "value": "0xFFFFA500"}
 - "change slider inactive color to light grey": {"component": "slider", "property": "inactiveColor", "value": "0xFFD3D3D3"}
 
-// New: Progress Indicator Examples
+// Progress Indicator Examples
 - "set progress to 50%": {"component": "progressIndicator", "property": "value", "value": 0.5}
 - "make progress bar blue": {"component": "progressIndicator", "property": "color", "value": "0xFF0000FF"}
 - "change progress background to light green": {"component": "progressIndicator", "property": "backgroundColor", "value": "0xFF90EE90"}
 
-// New: Image Gallery Examples
+// Image Gallery Examples
 - "show next image": {"component": "imageGallery", "property": "nextImage", "value": true} // Value can be ignored
 - "show previous image": {"component": "imageGallery", "property": "prevImage", "value": true} // Value can be ignored
 - "start image slideshow": {"component": "imageGallery", "property": "autoPlay", "value": true}
 - "stop image slideshow": {"component": "imageGallery", "property": "autoPlay", "value": false}
 - "show image 2": {"component": "imageGallery", "property": "currentImageIndex", "value": 1} // 0-indexed
+
+// Add Widget Examples
+- "add a new button with text 'New Button' and red background": {"commandType": "addWidget", "widgetType": "button", "properties": {"content": "New Button", "backgroundColor": "0xFFFF0000", "textColor": "0xFFFFFFFF", "borderRadius": 8.0}}
+- "add a small blue box": {"commandType": "addWidget", "widgetType": "colorBox", "properties": {"size": 30.0, "backgroundColor": "0xFF0000FF"}}
+- "add a text label saying 'Hello World' with font size 20": {"commandType": "addWidget", "widgetType": "text", "properties": {"content": "Hello World", "fontSize": 20.0, "textColor": "0xFF000000", "textAlign": "center"}}
+- "add a new switch": {"commandType": "addWidget", "widgetType": "toggleSwitch", "properties": {"value": true, "activeColor": "0xFF00FF00"}}
+- "add a new slider with value 0.2": {"commandType": "addWidget", "widgetType": "slider", "properties": {"value": 0.2, "min": 0.0, "max": 1.0, "activeColor": "0xFF0000FF"}}
+- "add a new progress indicator at 75%": {"commandType": "addWidget", "widgetType": "progressIndicator", "properties": {"value": 0.75, "color": "0xFF800080"}}
+- "add a text field with initial text 'Type here' and red border": {"commandType": "addWidget", "widgetType": "textField", "properties": {"initialText": "Type here", "hintText": "Enter text", "borderColor": "0xFFFF0000", "borderRadius": 12.0, "fontSize": 18.0, "textColor": "0xFF333333", "focusedBorderColor": "0xFF0000FF"}}
+
+// New: Modify Dynamic Widget Examples with targetIndex
+- "change the text of the second button to 'Click Me Now'": {"component": "button", "property": "content", "value": "Click Me Now", "targetIndex": 2}
+- "make the first text field's font size 22": {"component": "textField", "property": "fontSize", "value": 22.0, "targetIndex": 1}
+- "set the third color box to green": {"component": "colorBox", "property": "backgroundColor", "value": "0xFF00FF00", "targetIndex": 3}
 
 
 Colors should always be returned as 10-character hex strings (e.g., "0xFFRRGGBB").
@@ -105,11 +127,13 @@ JSON Output:
       'model': _model,
       'messages': [
         {'role': 'system', 'content': systemInstruction},
-        {'role': 'user', 'content': userCommand}
+        {'role': 'user', 'content': userCommand},
       ],
       'temperature': 1.0,
       'top_p': 1.0,
-      'response_format': {'type': 'json_object'} // Explicitly request JSON output
+      'response_format': {
+        'type': 'json_object',
+      }, // Explicitly request JSON output
     };
 
     // Print the encoded body for debugging purposes
@@ -117,31 +141,37 @@ JSON Output:
     // IMPORTANT: Double-check that your _apiKey is correct and matches the one used in the working curl command.
     print('Using API Key (first 5 chars): ${_apiKey.substring(0, 5)}...');
 
-
     try {
       final response = await http.post(
         Uri.parse('$_apiBaseUrl/chat/completions'),
         headers: {
-          'Content-Type': 'application/json; charset=utf-8', // Added charset=utf-8
-          'Authorization': 'Bearer $_apiKey', // Authentication header as per working curl command
+          'Content-Type':
+          'application/json; charset=utf-8', // Added charset=utf-8
+          'Authorization':
+          'Bearer $_apiKey', // Authentication header as per working curl command
         },
         body: json.encode(requestBody),
       );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseBody = json.decode(response.body);
-        String llmOutputContent = responseBody['choices'][0]['message']['content'];
+        String llmOutputContent =
+        responseBody['choices'][0]['message']['content'];
 
         try {
           final Map<String, dynamic> parsedJson = json.decode(llmOutputContent);
           return parsedJson;
         } catch (e) {
-          print('Error parsing LLM JSON output. LLM might have returned malformed JSON: $e');
+          print(
+            'Error parsing LLM JSON output. LLM might have returned malformed JSON: $e',
+          );
           print('LLM Raw Output: $llmOutputContent');
           return null;
         }
       } else {
-        print('Azure OpenAI API Error: ${response.statusCode} - ${response.body}');
+        print(
+          'Azure OpenAI API Error: ${response.statusCode} - ${response.body}',
+        );
         return null;
       }
     } catch (e) {
@@ -152,7 +182,8 @@ JSON Output:
 }
 
 Color? parseHexColor(String hexColor) {
-  if (hexColor.startsWith('0x') && (hexColor.length == 10 || hexColor.length == 8)) {
+  if (hexColor.startsWith('0x') &&
+      (hexColor.length == 10 || hexColor.length == 8)) {
     try {
       return Color(int.parse(hexColor));
     } catch (e) {
@@ -160,6 +191,8 @@ Color? parseHexColor(String hexColor) {
       return null;
     }
   }
-  print('Hex color string does not start with "0x" or has incorrect length: $hexColor');
+  print(
+    'Hex color string does not start with "0x" or has incorrect length: $hexColor',
+  );
   return null;
 }
