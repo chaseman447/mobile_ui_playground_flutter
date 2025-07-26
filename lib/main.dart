@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_ui_playground_flutter/llm_api_service.dart'; // Import your LLM service
-import 'package:shared_preferences/shared_preferences.dart'; // Import shared_preferences
-import 'dart:convert'; // For json.encode and json.decode
-import 'dart:async'; // For Timer for image carousel
-import 'package:flutter/foundation.dart'; // For debugPrint
-import 'package:speech_to_text/speech_to_text.dart'; // Import speech_to_text
+import 'package:mobile_ui_playground_flutter/llm_api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+// Removed: import 'package:speech_to_text/speech_to_text.dart';
+
+// Import new components
+import 'widgets/profile_card.dart';
+import 'widgets/color_box_widget.dart';
+import 'widgets/dynamic_button_widget.dart';
+import 'widgets/dynamic_switch_widget.dart';
+import 'widgets/dynamic_slider_widget.dart';
+import 'widgets/progress_indicator_widget.dart';
+import 'widgets/image_gallery_widget.dart';
+import 'widgets/static_text_field_widget.dart';
+import 'widgets/dynamic_widget_builder.dart'; // New: For dynamic widgets
+import 'utils/color_parser.dart' as color_parser; // For parseHexColor - Added 'as color_parser'
+import 'utils/alignment_parser.dart'; // New: For alignment parsing
 
 void main() {
   runApp(const MyApp());
@@ -35,11 +48,12 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   // --- State Variables for UI Elements ---
+  // Profile Card states
   Color _profileCardBackgroundColor = Colors.grey[200]!;
   double _profileCardBorderRadius = 8.0;
   bool _isProfileCardVisible = true;
   Alignment _profileCardAlignment = Alignment.center;
-  double _profileCardPadding = 0.0; // New: Padding for profile card
+  double _profileCardPadding = 0.0;
 
   double _profileImageBorderRadius = 50.0;
   double _profileImageSize = 100.0;
@@ -51,7 +65,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   TextAlign _nameTextAlign = TextAlign.center;
   bool _isNameTextVisible = true;
   Alignment _nameTextAlignment = Alignment.center;
-  double _nameTextPadding = 0.0; // New: Padding for name text
+  double _nameTextPadding = 0.0;
 
   String _titleTextContent = 'Lead Product Designer';
   double _titleFontSize = 16.0;
@@ -59,7 +73,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   bool _isTitleVisible = true;
   TextAlign _titleTextAlign = TextAlign.center;
   Alignment _titleTextAlignment = Alignment.center;
-  double _titleTextPadding = 0.0; // New: Padding for title text
+  double _titleTextPadding = 0.0;
 
   String _bioTextContent = 'Innovating user experiences with a keen eye for detail and a passion for human-centered design.';
   double _bioFontSize = 14.0;
@@ -67,35 +81,39 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   TextAlign _bioTextAlign = TextAlign.center;
   bool _isBioTextVisible = true;
   Alignment _bioTextAlignment = Alignment.center;
-  double _bioTextPadding = 0.0; // New: Padding for bio text
+  double _bioTextPadding = 0.0;
 
-  // Component states
+  // Color Box states
   Color _colorBoxBackgroundColor = Colors.purple[200]!;
   double _colorBoxSize = 50.0;
   bool _isColorBoxVisible = true;
   Alignment _colorBoxAlignment = Alignment.center;
-  double _colorBoxPadding = 0.0; // New: Padding for color box
+  double _colorBoxPadding = 0.0;
 
+  // Button states
   String _buttonTextContent = 'Apply Changes';
   Color _buttonBackgroundColor = Colors.blue;
   Color _buttonTextColor = Colors.white;
   double _buttonBorderRadius = 4.0;
   bool _isMainActionButtonVisible = true;
   Alignment _mainActionButtonAlignment = Alignment.center;
-  double _mainActionButtonPadding = 0.0; // New: Padding for button
+  double _mainActionButtonPadding = 0.0;
 
+  // Switch states
   bool _switchValue = true;
   Color _switchActiveColor = Colors.green;
   Color _switchInactiveThumbColor = Colors.grey;
   bool _isToggleSwitchVisible = true;
   Alignment _toggleSwitchAlignment = Alignment.center;
-  double _toggleSwitchPadding = 0.0; // New: Padding for switch
+  double _toggleSwitchPadding = 0.0;
 
+  // Column states
   MainAxisAlignment _mainColumnAlignment = MainAxisAlignment.start;
   CrossAxisAlignment _mainColumnCrossAlignment = CrossAxisAlignment.center;
   double _mainColumnPadding = 16.0;
   Color _mainColumnBackgroundColor = Colors.transparent;
 
+  // Slider states
   double _sliderValue = 0.5;
   double _sliderMin = 0.0;
   double _sliderMax = 1.0;
@@ -103,15 +121,17 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   Color _sliderInactiveColor = Colors.grey;
   bool _isSliderVisible = true;
   Alignment _sliderAlignment = Alignment.center;
-  double _sliderPadding = 0.0; // New: Padding for slider
+  double _sliderPadding = 0.0;
 
+  // Progress Indicator states
   double _progressValue = 0.3;
   Color _progressColor = Colors.blue;
   Color _progressBackgroundColor = Colors.grey[300]!;
   bool _isProgressIndicatorVisible = true;
   Alignment _progressIndicatorAlignment = Alignment.center;
-  double _progressIndicatorPadding = 0.0; // New: Padding for progress indicator
+  double _progressIndicatorPadding = 0.0;
 
+  // Image Gallery states
   final List<String> _imageUrls = [
     'https://picsum.photos/150/150?random=1',
     'https://picsum.photos/150/150?random=2',
@@ -122,25 +142,24 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   Timer? _imageAutoPlayTimer;
   bool _isImageGalleryVisible = true;
   Alignment _imageGalleryAlignment = Alignment.center;
-  double _imageGalleryPadding = 0.0; // New: Padding for image gallery
+  double _imageGalleryPadding = 0.0;
 
-  // New: Static TextField variables
+  // Static TextField states
   String _staticTextFieldContent = 'Hello, Flutter!';
-  final TextEditingController _staticTextFieldController = TextEditingController();
   bool _isStaticTextFieldVisible = true;
   Alignment _staticTextFieldAlignment = Alignment.center;
   double _staticTextFieldPadding = 0.0;
 
-  // New animation states
+  // Animation states
   late AnimationController _fadeController;
   late AnimationController _scaleController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
 
-  // New: List to hold dynamically added widgets
+  // Dynamic widgets list
   List<Map<String, dynamic>> _dynamicWidgets = [];
 
-  // Enhanced state management
+  // State management for presets and history
   late Map<String, dynamic> _initialState;
   late SharedPreferences _prefs;
   Map<String, Map<String, dynamic>> _savedPresets = {};
@@ -153,19 +172,18 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   List<String> _commandHistory = [];
   int _historyIndex = -1;
 
-  // Speech-to-text variables
-  final SpeechToText _speechToText = SpeechToText();
-  bool _speechEnabled = false;
-  String _lastWordsSpoken = ''; // Stores the last recognized words from speech
-  String _currentLocaleId = '';
-  bool _isListening = false; // Track listening state
+  // Removed: Speech-to-text variables
+  // final SpeechToText _speechToText = SpeechToText();
+  // bool _speechEnabled = false;
+  // String _lastWordsSpoken = '';
+  // String _currentLocaleId = '';
+  // bool _isListening = false;
 
   @override
   void initState() {
     super.initState();
     debugPrint('MyHomePage initState: Initializing enhanced UI');
 
-    // Initialize animations
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -185,101 +203,95 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     _fadeController.forward();
     _scaleController.forward();
 
-    _staticTextFieldController.text = _staticTextFieldContent; // Initialize static text field controller
-
     _saveInitialState();
     _initSharedPreferences();
     _startImageAutoPlayTimer();
-    _initSpeech(); // Initialize speech recognition
+    // Removed: _initSpeech();
   }
 
   @override
   void dispose() {
     debugPrint('MyHomePage dispose: Cleaning up resources');
     _commandController.dispose();
-    _staticTextFieldController.dispose(); // Dispose static text field controller
     _imageAutoPlayTimer?.cancel();
     _fadeController.dispose();
     _scaleController.dispose();
-    _speechToText.stop(); // Stop listening when disposing
+    // Removed: _speechToText.stop();
     super.dispose();
   }
 
-  /// This initializes the speech recognition capability.
-  void _initSpeech() async {
-    _speechEnabled = await _speechToText.initialize(
-      onStatus: _onSpeechStatus,
-      onError: (val) => debugPrint('Speech Error: $val'),
-    );
-    if (_speechEnabled) {
-      final systemLocales = await _speechToText.locales();
-      _currentLocaleId = systemLocales.first.localeId;
-      debugPrint('Speech initialized. Locale: $_currentLocaleId');
-    } else {
-      debugPrint('Speech recognition not available');
-      _showMessage('Speech recognition not available.', isError: true);
-    }
-    setState(() {});
-  }
+  // Removed: _initSpeech method
+  // void _initSpeech() async {
+  //   _speechEnabled = await _speechToText.initialize(
+  //     onStatus: _onSpeechStatus,
+  //     onError: (val) => debugPrint('Speech Error: $val'),
+  //   );
+  //   if (_speechEnabled) {
+  //     final systemLocales = await _speechToText.locales();
+  //     _currentLocaleId = systemLocales.first.localeId;
+  //     debugPrint('Speech initialized. Locale: $_currentLocaleId');
+  //   } else {
+  //     debugPrint('Speech recognition not available');
+  //     _showMessage('Speech recognition not available.', isError: true);
+  //   }
+  //   setState(() {});
+  // }
 
-  /// Each time to start a speech recognition session
-  void _startListening() async {
-    if (!_speechEnabled) {
-      _showMessage('Speech recognition not enabled.', isError: true);
-      return;
-    }
-    _lastWordsSpoken = ''; // Clear previous words
-    await _speechToText.listen(
-      onResult: _onSpeechResult,
-      listenFor: const Duration(seconds: 10), // Listen for up to 10 seconds
-      pauseFor: const Duration(seconds: 3), // Pause if no speech for 3 seconds
-      localeId: _currentLocaleId,
-      cancelOnError: true,
-      partialResults: true,
-      onDevice: true,
-    );
-    setState(() {
-      _isListening = true;
-      _showMessage('Listening for vocal command...');
-    });
-  }
+  // Removed: _startListening method
+  // void _startListening() async {
+  //   if (!_speechEnabled) {
+  //     _showMessage('Speech recognition not enabled.', isError: true);
+  //     return;
+  //   }
+  //   _lastWordsSpoken = '';
+  //   await _speechToText.listen(
+  //     onResult: _onSpeechResult,
+  //     listenFor: const Duration(seconds: 10),
+  //     pauseFor: const Duration(seconds: 3),
+  //     localeId: _currentLocaleId,
+  //     cancelOnError: true,
+  //     partialResults: true,
+  //     onDevice: true,
+  //   );
+  //   setState(() {
+  //     _isListening = true;
+  //     _showMessage('Listening for vocal command...');
+  //   });
+  // }
 
-  /// Manually stop the active speech recognition session
-  void _stopListening() async {
-    await _speechToText.stop();
-    setState(() {
-      _isListening = false;
-      if (_lastWordsSpoken.isNotEmpty) {
-        // If words were recognized, process them as a command
-        _commandController.text = _lastWordsSpoken;
-        _handleCommand();
-      } else {
-        _showMessage('No vocal command detected.', isError: true);
-      }
-    });
-  }
+  // Removed: _stopListening method
+  // void _stopListening() async {
+  //   await _speechToText.stop();
+  //   setState(() {
+  //     _isListening = false;
+  //     if (_lastWordsSpoken.isNotEmpty) {
+  //       _commandController.text = _lastWordsSpoken;
+  //       _handleCommand();
+  //     } else {
+  //       _showMessage('No vocal command detected.', isError: true);
+  //     }
+  //   });
+  // }
 
-  /// This is the callback that the SpeechToText plugin calls when
-  /// the platform returns a SpeechRecognitionResult with words recognized.
-  void _onSpeechResult(result) {
-    setState(() {
-      _lastWordsSpoken = result.recognizedWords;
-      if (result.finalResult) {
-        _isListening = false; // Stop listening automatically on final result
-        _commandController.text = _lastWordsSpoken; // Populate text field
-        _handleCommand(); // Process the command
-      }
-    });
-  }
+  // Removed: _onSpeechResult method
+  // void _onSpeechResult(result) {
+  //   setState(() {
+  //     _lastWordsSpoken = result.recognizedWords;
+  //     if (result.finalResult) {
+  //       _isListening = false;
+  //       _commandController.text = _lastWordsSpoken;
+  //       _handleCommand();
+  //     }
+  //   });
+  // }
 
-  /// This is the callback that the SpeechToText plugin calls when
-  /// the status of the speech recognition changes.
-  void _onSpeechStatus(String status) {
-    debugPrint('Speech Status: $status');
-    setState(() {
-      _isListening = _speechToText.isListening;
-    });
-  }
+  // Removed: _onSpeechStatus method
+  // void _onSpeechStatus(String status) {
+  //   debugPrint('Speech Status: $status');
+  //   setState(() {
+  //     _isListening = _speechToText.isListening;
+  //   });
+  // }
 
   Future<void> _initSharedPreferences() async {
     try {
@@ -303,7 +315,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       'profileCardBorderRadius': _profileCardBorderRadius,
       'isProfileCardVisible': _isProfileCardVisible,
       'profileCardAlignment': _profileCardAlignment.toString().split('.').last,
-      'profileCardPadding': _profileCardPadding, // Save padding
+      'profileCardPadding': _profileCardPadding,
       'profileImageBorderRadius': _profileImageBorderRadius,
       'profileImageSize': _profileImageSize,
       'nameTextContent': _nameTextContent,
@@ -313,39 +325,39 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       'nameTextAlign': _nameTextAlign.index,
       'isNameTextVisible': _isNameTextVisible,
       'nameTextAlignment': _nameTextAlignment.toString().split('.').last,
-      'nameTextPadding': _nameTextPadding, // Save padding
+      'nameTextPadding': _nameTextPadding,
       'titleTextContent': _titleTextContent,
       'titleFontSize': _titleFontSize,
       'titleTextColor': _titleTextColor.value,
       'isTitleVisible': _isTitleVisible,
       'titleTextAlign': _titleTextAlign.index,
       'titleTextAlignment': _titleTextAlignment.toString().split('.').last,
-      'titleTextPadding': _titleTextPadding, // Save padding
+      'titleTextPadding': _titleTextPadding,
       'bioTextContent': _bioTextContent,
       'bioFontSize': _bioFontSize,
       'bioTextColor': _bioTextColor.value,
       'bioTextAlign': _bioTextAlign.index,
       'isBioTextVisible': _isBioTextVisible,
       'bioTextAlignment': _bioTextAlignment.toString().split('.').last,
-      'bioTextPadding': _bioTextPadding, // Save padding
+      'bioTextPadding': _bioTextPadding,
       'colorBoxBackgroundColor': _colorBoxBackgroundColor.value,
       'colorBoxSize': _colorBoxSize,
       'isColorBoxVisible': _isColorBoxVisible,
       'colorBoxAlignment': _colorBoxAlignment.toString().split('.').last,
-      'colorBoxPadding': _colorBoxPadding, // Save padding
+      'colorBoxPadding': _colorBoxPadding,
       'buttonTextContent': _buttonTextContent,
       'buttonBackgroundColor': _buttonBackgroundColor.value,
       'buttonTextColor': _buttonTextColor.value,
       'buttonBorderRadius': _buttonBorderRadius,
       'isMainActionButtonVisible': _isMainActionButtonVisible,
       'mainActionButtonAlignment': _mainActionButtonAlignment.toString().split('.').last,
-      'mainActionButtonPadding': _mainActionButtonPadding, // Save padding
+      'mainActionButtonPadding': _mainActionButtonPadding,
       'switchValue': _switchValue,
       'switchActiveColor': _switchActiveColor.value,
       'switchInactiveThumbColor': _switchInactiveThumbColor.value,
       'isToggleSwitchVisible': _isToggleSwitchVisible,
       'toggleSwitchAlignment': _toggleSwitchAlignment.toString().split('.').last,
-      'toggleSwitchPadding': _toggleSwitchPadding, // Save padding
+      'toggleSwitchPadding': _toggleSwitchPadding,
       'mainColumnAlignment': _mainColumnAlignment.index,
       'mainColumnCrossAlignment': _mainColumnCrossAlignment.index,
       'mainColumnPadding': _mainColumnPadding,
@@ -357,19 +369,19 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       'sliderInactiveColor': _sliderInactiveColor.value,
       'isSliderVisible': _isSliderVisible,
       'sliderAlignment': _sliderAlignment.toString().split('.').last,
-      'sliderPadding': _sliderPadding, // Save padding
+      'sliderPadding': _sliderPadding,
       'progressValue': _progressValue,
       'progressColor': _progressColor.value,
       'progressBackgroundColor': _progressBackgroundColor.value,
       'isProgressIndicatorVisible': _isProgressIndicatorVisible,
       'progressIndicatorAlignment': _progressIndicatorAlignment.toString().split('.').last,
-      'progressIndicatorPadding': _progressIndicatorPadding, // Save padding
+      'progressIndicatorPadding': _progressIndicatorPadding,
       'currentImageIndex': _currentImageIndex,
       'imageAutoPlay': _imageAutoPlay,
       'isImageGalleryVisible': _isImageGalleryVisible,
       'imageGalleryAlignment': _imageGalleryAlignment.toString().split('.').last,
-      'imageGalleryPadding': _imageGalleryPadding, // Save padding
-      'staticTextFieldContent': _staticTextFieldContent, // Save static text field content
+      'imageGalleryPadding': _imageGalleryPadding,
+      'staticTextFieldContent': _staticTextFieldContent,
       'isStaticTextFieldVisible': _isStaticTextFieldVisible,
       'staticTextFieldAlignment': _staticTextFieldAlignment.toString().split('.').last,
       'staticTextFieldPadding': _staticTextFieldPadding,
@@ -385,8 +397,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         _profileCardBackgroundColor = Color(state['profileCardBackgroundColor'] ?? Colors.grey[200]!.value);
         _profileCardBorderRadius = (state['profileCardBorderRadius'] ?? 8.0).toDouble();
         _isProfileCardVisible = state['isProfileCardVisible'] ?? true;
-        _profileCardAlignment = _parseAlignment(state['profileCardAlignment'] ?? 'center');
-        _profileCardPadding = (state['profileCardPadding'] ?? 0.0).toDouble(); // Apply padding
+        _profileCardAlignment = parseAlignment(state['profileCardAlignment'] ?? 'center');
+        _profileCardPadding = (state['profileCardPadding'] ?? 0.0).toDouble();
 
         _profileImageBorderRadius = (state['profileImageBorderRadius'] ?? 50.0).toDouble();
         _profileImageSize = (state['profileImageSize'] ?? 100.0).toDouble();
@@ -395,50 +407,50 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         _nameFontSize = (state['nameFontSize'] ?? 24.0).toDouble();
         _nameFontWeight = FontWeight.values[state['nameFontWeight'] ?? FontWeight.bold.index];
         _nameTextColor = Color(state['nameTextColor'] ?? Colors.black87.value);
-        _nameTextAlign = TextAlign.values[state['nameTextAlign'] ?? TextAlign.center.index];
+        _nameTextAlign = parseTextAlign(state['nameTextAlign'] ?? 'center');
         _isNameTextVisible = state['isNameTextVisible'] ?? true;
-        _nameTextAlignment = _parseAlignment(state['nameTextAlignment'] ?? 'center');
-        _nameTextPadding = (state['nameTextPadding'] ?? 0.0).toDouble(); // Apply padding
+        _nameTextAlignment = parseAlignment(state['nameTextAlignment'] ?? 'center');
+        _nameTextPadding = (state['nameTextPadding'] ?? 0.0).toDouble();
 
         _titleTextContent = state['titleTextContent'] ?? 'Lead Product Designer';
         _titleFontSize = (state['titleFontSize'] ?? 16.0).toDouble();
         _titleTextColor = Color(state['titleTextColor'] ?? Colors.grey[700]!.value);
         _isTitleVisible = state['isTitleVisible'] ?? true;
-        _titleTextAlign = TextAlign.values[state['titleTextAlign'] ?? TextAlign.center.index];
-        _titleTextAlignment = _parseAlignment(state['titleTextAlignment'] ?? 'center');
-        _titleTextPadding = (state['titleTextPadding'] ?? 0.0).toDouble(); // Apply padding
+        _titleTextAlign = parseTextAlign(state['titleTextAlign'] ?? 'center');
+        _titleTextAlignment = parseAlignment(state['titleTextAlignment'] ?? 'center');
+        _titleTextPadding = (state['titleTextPadding'] ?? 0.0).toDouble();
 
         _bioTextContent = state['bioTextContent'] ?? 'Default bio text';
         _bioFontSize = (state['bioFontSize'] ?? 14.0).toDouble();
         _bioTextColor = Color(state['bioTextColor'] ?? Colors.black54.value);
-        _bioTextAlign = TextAlign.values[state['bioTextAlign'] ?? TextAlign.center.index];
+        _bioTextAlign = parseTextAlign(state['bioTextAlign'] ?? 'center');
         _isBioTextVisible = state['isBioTextVisible'] ?? true;
-        _bioTextAlignment = _parseAlignment(state['bioTextAlignment'] ?? 'center');
-        _bioTextPadding = (state['bioTextPadding'] ?? 0.0).toDouble(); // Apply padding
+        _bioTextAlignment = parseAlignment(state['bioTextAlignment'] ?? 'center');
+        _bioTextPadding = (state['bioTextPadding'] ?? 0.0).toDouble();
 
         _colorBoxBackgroundColor = Color(state['colorBoxBackgroundColor'] ?? Colors.purple[200]!.value);
         _colorBoxSize = (state['colorBoxSize'] ?? 50.0).toDouble();
         _isColorBoxVisible = state['isColorBoxVisible'] ?? true;
-        _colorBoxAlignment = _parseAlignment(state['colorBoxAlignment'] ?? 'center');
-        _colorBoxPadding = (state['colorBoxPadding'] ?? 0.0).toDouble(); // Apply padding
+        _colorBoxAlignment = parseAlignment(state['colorBoxAlignment'] ?? 'center');
+        _colorBoxPadding = (state['colorBoxPadding'] ?? 0.0).toDouble();
 
         _buttonTextContent = state['buttonTextContent'] ?? 'Apply Changes';
         _buttonBackgroundColor = Color(state['buttonBackgroundColor'] ?? Colors.blue.value);
         _buttonTextColor = Color(state['buttonTextColor'] ?? Colors.white.value);
         _buttonBorderRadius = (state['buttonBorderRadius'] ?? 4.0).toDouble();
         _isMainActionButtonVisible = true;
-        _mainActionButtonAlignment = _parseAlignment(state['mainActionButtonAlignment'] ?? 'center');
-        _mainActionButtonPadding = (state['mainActionButtonPadding'] ?? 0.0).toDouble(); // Apply padding
+        _mainActionButtonAlignment = parseAlignment(state['mainActionButtonAlignment'] ?? 'center');
+        _mainActionButtonPadding = (state['mainActionButtonPadding'] ?? 0.0).toDouble();
 
         _switchValue = state['switchValue'] ?? true;
         _switchActiveColor = Color(state['switchActiveColor'] ?? Colors.green.value);
         _switchInactiveThumbColor = Color(state['switchInactiveThumbColor'] ?? Colors.grey.value);
         _isToggleSwitchVisible = true;
-        _toggleSwitchAlignment = _parseAlignment(state['toggleSwitchAlignment'] ?? 'center');
-        _toggleSwitchPadding = (state['toggleSwitchPadding'] ?? 0.0).toDouble(); // Apply padding
+        _toggleSwitchAlignment = parseAlignment(state['toggleSwitchAlignment'] ?? 'center');
+        _toggleSwitchPadding = (state['toggleSwitchPadding'] ?? 0.0).toDouble();
 
-        _mainColumnAlignment = MainAxisAlignment.values[state['mainColumnAlignment'] ?? MainAxisAlignment.start.index];
-        _mainColumnCrossAlignment = CrossAxisAlignment.values[state['mainColumnCrossAlignment'] ?? CrossAxisAlignment.center.index];
+        _mainColumnAlignment = parseMainAxisAlignment(state['mainColumnAlignment'] ?? 'start');
+        _mainColumnCrossAlignment = parseCrossAxisAlignment(state['mainColumnCrossAlignment'] ?? 'center');
         _mainColumnPadding = (state['mainColumnPadding'] ?? 16.0).toDouble();
         _mainColumnBackgroundColor = Color(state['mainColumnBackgroundColor'] ?? Colors.transparent.value);
 
@@ -448,26 +460,25 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         _sliderActiveColor = Color(state['sliderActiveColor'] ?? Colors.blue.value);
         _sliderInactiveColor = Color(state['sliderInactiveColor'] ?? Colors.grey.value);
         _isSliderVisible = true;
-        _sliderAlignment = _parseAlignment(state['sliderAlignment'] ?? 'center');
-        _sliderPadding = (state['sliderPadding'] ?? 0.0).toDouble(); // Apply padding
+        _sliderAlignment = parseAlignment(state['sliderAlignment'] ?? 'center');
+        _sliderPadding = (state['sliderPadding'] ?? 0.0).toDouble();
 
         _progressValue = (state['progressValue'] ?? 0.3).toDouble();
         _progressColor = Color(state['progressColor'] ?? Colors.blue.value);
         _progressBackgroundColor = Color(state['progressBackgroundColor'] ?? Colors.grey[300]!.value);
         _isProgressIndicatorVisible = true;
-        _progressIndicatorAlignment = _parseAlignment(state['progressIndicatorAlignment'] ?? 'center');
-        _progressIndicatorPadding = (state['progressIndicatorPadding'] ?? 0.0).toDouble(); // Apply padding
+        _progressIndicatorAlignment = parseAlignment(state['progressIndicatorAlignment'] ?? 'center');
+        _progressIndicatorPadding = (state['progressIndicatorPadding'] ?? 0.0).toDouble();
 
         _currentImageIndex = state['currentImageIndex'] ?? 0;
         _imageAutoPlay = state['imageAutoPlay'] ?? false;
         _isImageGalleryVisible = true;
-        _imageGalleryAlignment = _parseAlignment(state['imageGalleryAlignment'] ?? 'center');
-        _imageGalleryPadding = (state['imageGalleryPadding'] ?? 0.0).toDouble(); // Apply padding
+        _imageGalleryAlignment = parseAlignment(state['imageGalleryAlignment'] ?? 'center');
+        _imageGalleryPadding = (state['imageGalleryPadding'] ?? 0.0).toDouble();
 
         _staticTextFieldContent = state['staticTextFieldContent'] ?? 'Hello, Flutter!';
-        _staticTextFieldController.text = _staticTextFieldContent; // Update controller text
         _isStaticTextFieldVisible = state['isStaticTextFieldVisible'] ?? true;
-        _staticTextFieldAlignment = _parseAlignment(state['staticTextFieldAlignment'] ?? 'center');
+        _staticTextFieldAlignment = parseAlignment(state['staticTextFieldAlignment'] ?? 'center');
         _staticTextFieldPadding = (state['staticTextFieldPadding'] ?? 0.0).toDouble();
 
         _dynamicWidgets = (state['dynamicWidgets'] as List<dynamic>?)
@@ -559,56 +570,6 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     _showMessage('UI has been reset to initial state');
   }
 
-  TextAlign _parseTextAlign(String alignString) {
-    switch (alignString.toLowerCase()) {
-      case 'left': return TextAlign.left;
-      case 'center': return TextAlign.center;
-      case 'right': return TextAlign.right;
-      case 'justify': return TextAlign.justify;
-      case 'start': return TextAlign.start;
-      case 'end': return TextAlign.end;
-      default: return TextAlign.center;
-    }
-  }
-
-  MainAxisAlignment _parseMainAxisAlignment(String alignString) {
-    switch (alignString.toLowerCase()) {
-      case 'start': return MainAxisAlignment.start;
-      case 'center': return MainAxisAlignment.center;
-      case 'end': return MainAxisAlignment.end;
-      case 'spacebetween': return MainAxisAlignment.spaceBetween;
-      case 'spacearound': return MainAxisAlignment.spaceAround;
-      case 'spaceevenly': return MainAxisAlignment.spaceEvenly;
-      default: return MainAxisAlignment.start;
-    }
-  }
-
-  CrossAxisAlignment _parseCrossAxisAlignment(String alignString) {
-    switch (alignString.toLowerCase()) {
-      case 'start': return CrossAxisAlignment.start;
-      case 'center': return CrossAxisAlignment.center;
-      case 'end': return CrossAxisAlignment.end;
-      case 'stretch': return CrossAxisAlignment.stretch;
-      case 'baseline': return CrossAxisAlignment.baseline;
-      default: return CrossAxisAlignment.center;
-    }
-  }
-
-  Alignment _parseAlignment(String alignString) {
-    switch (alignString.toLowerCase()) {
-      case 'topleft': return Alignment.topLeft;
-      case 'topcenter': return Alignment.topCenter;
-      case 'topright': return Alignment.topRight;
-      case 'centerleft': return Alignment.centerLeft;
-      case 'center': return Alignment.center;
-      case 'centerright': return Alignment.centerRight;
-      case 'bottomleft': return Alignment.bottomLeft;
-      case 'bottomcenter': return Alignment.bottomCenter;
-      case 'bottomright': return Alignment.bottomRight;
-      default: return Alignment.center;
-    }
-  }
-
   void _startImageAutoPlayTimer() {
     _imageAutoPlayTimer?.cancel();
     if (_imageAutoPlay && _imageUrls.isNotEmpty) {
@@ -629,7 +590,6 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       return;
     }
 
-    // Add to history
     if (!_commandHistory.contains(command)) {
       _commandHistory.insert(0, command);
       if (_commandHistory.length > 50) {
@@ -770,7 +730,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                 targetProperties['borderRadius'] = value.toDouble();
               } else if (property == 'alignment' && value is String) {
                 targetProperties['alignment'] = value;
-              } else if (property == 'padding' && value is num) { // New: Padding for dynamic button
+              } else if (property == 'padding' && value is num) {
                 final newValue = value.toDouble();
                 if (operation == 'add') {
                   targetProperties['padding'] = (targetProperties['padding'] ?? 0.0).toDouble() + newValue;
@@ -795,7 +755,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                 }
               } else if (property == 'alignment' && value is String) {
                 targetProperties['alignment'] = value;
-              } else if (property == 'padding' && value is num) { // New: Padding for dynamic color box
+              } else if (property == 'padding' && value is num) {
                 final newValue = value.toDouble();
                 if (operation == 'add') {
                   targetProperties['padding'] = (targetProperties['padding'] ?? 0.0).toDouble() + newValue;
@@ -826,7 +786,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                 targetProperties['fontWeight'] = value;
               } else if (property == 'alignment' && value is String) {
                 targetProperties['alignment'] = value;
-              } else if (property == 'padding' && value is num) { // New: Padding for dynamic text
+              } else if (property == 'padding' && value is num) {
                 final newValue = value.toDouble();
                 if (operation == 'add') {
                   targetProperties['padding'] = (targetProperties['padding'] ?? 0.0).toDouble() + newValue;
@@ -846,7 +806,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                 targetProperties['inactiveThumbColor'] = value;
               } else if (property == 'alignment' && value is String) {
                 targetProperties['alignment'] = value;
-              } else if (property == 'padding' && value is num) { // New: Padding for dynamic switch
+              } else if (property == 'padding' && value is num) {
                 final newValue = value.toDouble();
                 if (operation == 'add') {
                   targetProperties['padding'] = (targetProperties['padding'] ?? 0.0).toDouble() + newValue;
@@ -874,7 +834,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                 targetProperties['inactiveColor'] = value;
               } else if (property == 'alignment' && value is String) {
                 targetProperties['alignment'] = value;
-              } else if (property == 'padding' && value is num) { // New: Padding for dynamic slider
+              } else if (property == 'padding' && value is num) {
                 final newValue = value.toDouble();
                 if (operation == 'add') {
                   targetProperties['padding'] = (targetProperties['padding'] ?? 0.0).toDouble() + newValue;
@@ -894,7 +854,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                 targetProperties['backgroundColor'] = value;
               } else if (property == 'alignment' && value is String) {
                 targetProperties['alignment'] = value;
-              } else if (property == 'padding' && value is num) { // New: Padding for dynamic progress indicator
+              } else if (property == 'padding' && value is num) {
                 final newValue = value.toDouble();
                 if (operation == 'add') {
                   targetProperties['padding'] = (targetProperties['padding'] ?? 0.0).toDouble() + newValue;
@@ -929,7 +889,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                 targetProperties['focusedBorderColor'] = value;
               } else if (property == 'alignment' && value is String) {
                 targetProperties['alignment'] = value;
-              } else if (property == 'padding' && value is num) { // New: Padding for dynamic text field
+              } else if (property == 'padding' && value is num) {
                 final newValue = value.toDouble();
                 if (operation == 'add') {
                   targetProperties['padding'] = (targetProperties['padding'] ?? 0.0).toDouble() + newValue;
@@ -1004,7 +964,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
           case 'mainColumn':
             _handleMainColumnInstruction(property, value, operation);
             break;
-          case 'staticTextField': // New: Handle static text field instructions
+          case 'staticTextField':
             _handleStaticTextFieldInstruction(property, value, operation);
             break;
           default:
@@ -1023,7 +983,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     switch (property) {
       case 'backgroundColor':
         if (value is String) {
-          final Color? newColor = parseHexColor(value);
+          final Color? newColor = color_parser.parseHexColor(value);
           if (newColor != null) _profileCardBackgroundColor = newColor;
         }
         break;
@@ -1034,9 +994,9 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         if (value is bool) _isProfileCardVisible = value;
         break;
       case 'alignment':
-        if (value is String) _profileCardAlignment = _parseAlignment(value);
+        if (value is String) _profileCardAlignment = parseAlignment(value);
         break;
-      case 'padding': // New: Handle padding
+      case 'padding':
         if (value is num) {
           final newValue = value.toDouble();
           if (operation == 'add') {
@@ -1047,6 +1007,12 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
             _profileCardPadding = newValue.clamp(0.0, 50.0);
           }
         }
+        break;
+      case 'profileImageBorderRadius':
+        if (value is num) _profileImageBorderRadius = value.toDouble().clamp(0.0, 100.0);
+        break;
+      case 'profileImageSize':
+        if (value is num) _profileImageSize = value.toDouble().clamp(50.0, 200.0);
         break;
     }
   }
@@ -1072,7 +1038,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         break;
       case 'textColor':
         if (value is String) {
-          final Color? newColor = parseHexColor(value);
+          final Color? newColor = color_parser.parseHexColor(value);
           if (newColor != null) _nameTextColor = newColor;
         }
         break;
@@ -1080,15 +1046,15 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         if (value is String) _nameTextContent = value;
         break;
       case 'textAlign':
-        if (value is String) _nameTextAlign = _parseTextAlign(value);
+        if (value is String) _nameTextAlign = parseTextAlign(value);
         break;
       case 'isVisible':
         if (value is bool) _isNameTextVisible = value;
         break;
       case 'alignment':
-        if (value is String) _nameTextAlignment = _parseAlignment(value);
+        if (value is String) _nameTextAlignment = parseAlignment(value);
         break;
-      case 'padding': // New: Handle padding
+      case 'padding':
         if (value is num) {
           final newValue = value.toDouble();
           if (operation == 'add') {
@@ -1119,7 +1085,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         break;
       case 'textColor':
         if (value is String) {
-          final Color? newColor = parseHexColor(value);
+          final Color? newColor = color_parser.parseHexColor(value);
           if (newColor != null) _titleTextColor = newColor;
         }
         break;
@@ -1130,12 +1096,12 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         if (value is String) _titleTextContent = value;
         break;
       case 'textAlign':
-        if (value is String) _titleTextAlign = _parseTextAlign(value);
+        if (value is String) _titleTextAlign = parseTextAlign(value);
         break;
       case 'alignment':
-        if (value is String) _titleTextAlignment = _parseAlignment(value);
+        if (value is String) _titleTextAlignment = parseAlignment(value);
         break;
-      case 'padding': // New: Handle padding
+      case 'padding':
         if (value is num) {
           final newValue = value.toDouble();
           if (operation == 'add') {
@@ -1166,7 +1132,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         break;
       case 'textColor':
         if (value is String) {
-          final Color? newColor = parseHexColor(value);
+          final Color? newColor = color_parser.parseHexColor(value);
           if (newColor != null) _bioTextColor = newColor;
         }
         break;
@@ -1174,15 +1140,15 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         if (value is String) _bioTextContent = value;
         break;
       case 'textAlign':
-        if (value is String) _bioTextAlign = _parseTextAlign(value);
+        if (value is String) _bioTextAlign = parseTextAlign(value);
         break;
       case 'isVisible':
         if (value is bool) _isBioTextVisible = value;
         break;
       case 'alignment':
-        if (value is String) _bioTextAlignment = _parseAlignment(value);
+        if (value is String) _bioTextAlignment = parseAlignment(value);
         break;
-      case 'padding': // New: Handle padding
+      case 'padding':
         if (value is num) {
           final newValue = value.toDouble();
           if (operation == 'add') {
@@ -1201,7 +1167,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     switch (property) {
       case 'backgroundColor':
         if (value is String) {
-          final Color? newColor = parseHexColor(value);
+          final Color? newColor = color_parser.parseHexColor(value);
           if (newColor != null) _colorBoxBackgroundColor = newColor;
         }
         break;
@@ -1221,9 +1187,9 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         if (value is bool) _isColorBoxVisible = value;
         break;
       case 'alignment':
-        if (value is String) _colorBoxAlignment = _parseAlignment(value);
+        if (value is String) _colorBoxAlignment = parseAlignment(value);
         break;
-      case 'padding': // New: Handle padding
+      case 'padding':
         if (value is num) {
           final newValue = value.toDouble();
           if (operation == 'add') {
@@ -1245,13 +1211,13 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         break;
       case 'backgroundColor':
         if (value is String) {
-          final Color? newColor = parseHexColor(value);
+          final Color? newColor = color_parser.parseHexColor(value);
           if (newColor != null) _buttonBackgroundColor = newColor;
         }
         break;
       case 'textColor':
         if (value is String) {
-          final Color? newColor = parseHexColor(value);
+          final Color? newColor = color_parser.parseHexColor(value);
           if (newColor != null) _buttonTextColor = newColor;
         }
         break;
@@ -1262,9 +1228,9 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         if (value is bool) _isMainActionButtonVisible = value;
         break;
       case 'alignment':
-        if (value is String) _mainActionButtonAlignment = _parseAlignment(value);
+        if (value is String) _mainActionButtonAlignment = parseAlignment(value);
         break;
-      case 'padding': // New: Handle padding
+      case 'padding':
         if (value is num) {
           final newValue = value.toDouble();
           if (operation == 'add') {
@@ -1283,13 +1249,13 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     switch (property) {
       case 'activeColor':
         if (value is String) {
-          final Color? newColor = parseHexColor(value);
+          final Color? newColor = color_parser.parseHexColor(value);
           if (newColor != null) _switchActiveColor = newColor;
         }
         break;
       case 'inactiveThumbColor':
         if (value is String) {
-          final Color? newColor = parseHexColor(value);
+          final Color? newColor = color_parser.parseHexColor(value);
           if (newColor != null) _switchInactiveThumbColor = newColor;
         }
         break;
@@ -1300,9 +1266,9 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         if (value is bool) _isToggleSwitchVisible = value;
         break;
       case 'alignment':
-        if (value is String) _toggleSwitchAlignment = _parseAlignment(value);
+        if (value is String) _toggleSwitchAlignment = parseAlignment(value);
         break;
-      case 'padding': // New: Handle padding
+      case 'padding':
         if (value is num) {
           final newValue = value.toDouble();
           if (operation == 'add') {
@@ -1321,12 +1287,12 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     switch (property) {
       case 'mainAxisAlignment':
         if (value is String) {
-          _mainColumnAlignment = _parseMainAxisAlignment(value);
+          _mainColumnAlignment = parseMainAxisAlignment(value);
         }
         break;
       case 'crossAxisAlignment':
         if (value is String) {
-          _mainColumnCrossAlignment = _parseCrossAxisAlignment(value);
+          _mainColumnCrossAlignment = parseCrossAxisAlignment(value);
         }
         break;
       case 'padding':
@@ -1343,7 +1309,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         break;
       case 'backgroundColor':
         if (value is String) {
-          final Color? newColor = parseHexColor(value);
+          final Color? newColor = color_parser.parseHexColor(value);
           if (newColor != null) _mainColumnBackgroundColor = newColor;
         }
         break;
@@ -1369,13 +1335,13 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         break;
       case 'activeColor':
         if (value is String) {
-          final Color? newColor = parseHexColor(value);
+          final Color? newColor = color_parser.parseHexColor(value);
           if (newColor != null) _sliderActiveColor = newColor;
         }
         break;
       case 'inactiveColor':
         if (value is String) {
-          final Color? newColor = parseHexColor(value);
+          final Color? newColor = color_parser.parseHexColor(value);
           if (newColor != null) _sliderInactiveColor = newColor;
         }
         break;
@@ -1383,9 +1349,9 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         if (value is bool) _isSliderVisible = value;
         break;
       case 'alignment':
-        if (value is String) _sliderAlignment = _parseAlignment(value);
+        if (value is String) _sliderAlignment = parseAlignment(value);
         break;
-      case 'padding': // New: Handle padding
+      case 'padding':
         if (value is num) {
           final newValue = value.toDouble();
           if (operation == 'add') {
@@ -1407,13 +1373,13 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         break;
       case 'color':
         if (value is String) {
-          final Color? newColor = parseHexColor(value);
+          final Color? newColor = color_parser.parseHexColor(value);
           if (newColor != null) _progressColor = newColor;
         }
         break;
       case 'backgroundColor':
         if (value is String) {
-          final Color? newColor = parseHexColor(value);
+          final Color? newColor = color_parser.parseHexColor(value);
           if (newColor != null) _progressBackgroundColor = newColor;
         }
         break;
@@ -1421,9 +1387,9 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         if (value is bool) _isProgressIndicatorVisible = value;
         break;
       case 'alignment':
-        if (value is String) _progressIndicatorAlignment = _parseAlignment(value);
+        if (value is String) _progressIndicatorAlignment = parseAlignment(value);
         break;
-      case 'padding': // New: Handle padding
+      case 'padding':
         if (value is num) {
           final newValue = value.toDouble();
           if (operation == 'add') {
@@ -1461,9 +1427,9 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         if (value is bool) _isImageGalleryVisible = value;
         break;
       case 'alignment':
-        if (value is String) _imageGalleryAlignment = _parseAlignment(value);
+        if (value is String) _imageGalleryAlignment = parseAlignment(value);
         break;
-      case 'padding': // New: Handle padding
+      case 'padding':
         if (value is num) {
           final newValue = value.toDouble();
           if (operation == 'add') {
@@ -1483,14 +1449,13 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       case 'content':
         if (value is String) {
           _staticTextFieldContent = value;
-          _staticTextFieldController.text = value; // Update controller
         }
         break;
       case 'isVisible':
         if (value is bool) _isStaticTextFieldVisible = value;
         break;
       case 'alignment':
-        if (value is String) _staticTextFieldAlignment = _parseAlignment(value);
+        if (value is String) _staticTextFieldAlignment = parseAlignment(value);
         break;
       case 'padding':
         if (value is num) {
@@ -1519,7 +1484,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       _isSliderVisible = false;
       _isProgressIndicatorVisible = false;
       _isImageGalleryVisible = false;
-      _isStaticTextFieldVisible = false; // Hide static text field
+      _isStaticTextFieldVisible = false;
       _dynamicWidgets.clear();
     });
     _showMessage('Screen is now blank.');
@@ -1695,752 +1660,6 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildDynamicWidget(Map<String, dynamic> widgetData) {
-    final String widgetType = widgetData['widgetType'];
-    final Map<String, dynamic> properties = Map<String, dynamic>.from(widgetData['properties']);
-    final Key uniqueKey = ValueKey('dynamic_widget_${widgetData['id']}');
-
-    try {
-      Alignment dynamicAlignment = _parseAlignment(properties['alignment'] ?? 'center');
-      double dynamicPadding = (properties['padding'] ?? 0.0).toDouble(); // Get padding for dynamic widgets
-
-      Widget childWidget;
-      switch (widgetType) {
-        case 'dynamicButton':
-          childWidget = ElevatedButton(
-            onPressed: () {
-              _showMessage('Dynamic Button Pressed: ${properties['content'] ?? 'No Text'}');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: parseHexColor(properties['backgroundColor'] ?? '0xFF2196F3'),
-              foregroundColor: parseHexColor(properties['textColor'] ?? '0xFFFFFFFF'),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular((properties['borderRadius'] ?? 4.0).toDouble()),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            ),
-            child: Text(properties['content'] ?? 'Dynamic Button'),
-          );
-          break;
-        case 'colorBox':
-          childWidget = Container(
-            width: (properties['size'] ?? 50.0).toDouble(),
-            height: (properties['size'] ?? 50.0).toDouble(),
-            decoration: BoxDecoration(
-              color: parseHexColor(properties['backgroundColor'] ?? '0xFF9C27B0'),
-              borderRadius: BorderRadius.circular((properties['borderRadius'] ?? 8.0).toDouble()),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-          );
-          break;
-        case 'text':
-          childWidget = Text(
-            properties['content'] ?? 'Dynamic Text',
-            textAlign: _parseTextAlign(properties['textAlign'] ?? 'center'),
-            style: TextStyle(
-              fontSize: (properties['fontSize'] ?? 16.0).toDouble(),
-              color: parseHexColor(properties['textColor'] ?? '0xFF000000'),
-              fontWeight: properties['fontWeight'] == 'bold' ? FontWeight.bold : FontWeight.normal,
-            ),
-          );
-          break;
-        case 'toggleSwitch':
-          childWidget = Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('Dynamic Toggle:'),
-              Switch(
-                value: properties['value'] ?? false,
-                onChanged: (bool newValue) {
-                  setState(() {
-                    final int index = _dynamicWidgets.indexWhere((w) => w['id'] == widgetData['id']);
-                    if (index != -1) {
-                      _dynamicWidgets[index]['properties']['value'] = newValue;
-                    }
-                  });
-                  _showMessage('Dynamic Switch toggled to: $newValue');
-                },
-                activeColor: parseHexColor(properties['activeColor'] ?? '0xFF4CAF50'),
-                inactiveThumbColor: parseHexColor(properties['inactiveThumbColor'] ?? '0xFF9E9E9E'),
-              ),
-            ],
-          );
-          break;
-        case 'slider':
-          double dynSliderValue = (properties['value'] ?? 0.5).toDouble().clamp(
-            (properties['min'] ?? 0.0).toDouble(),
-            (properties['max'] ?? 1.0).toDouble(),
-          );
-          double dynSliderMin = (properties['min'] ?? 0.0).toDouble();
-          double dynSliderMax = (properties['max'] ?? 1.0).toDouble();
-
-          childWidget = Column(
-            children: [
-              Text('Dynamic Slider Value: ${dynSliderValue.toStringAsFixed(2)}'),
-              Slider(
-                value: dynSliderValue,
-                min: dynSliderMin,
-                max: dynSliderMax,
-                activeColor: parseHexColor(properties['activeColor'] ?? '0xFF2196F3'),
-                inactiveColor: parseHexColor(properties['inactiveColor'] ?? '0xFF9E9E9E'),
-                onChanged: (double newValue) {
-                  setState(() {
-                    final int index = _dynamicWidgets.indexWhere((w) => w['id'] == widgetData['id']);
-                    if (index != -1) {
-                      _dynamicWidgets[index]['properties']['value'] = newValue;
-                    }
-                  });
-                },
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('${dynSliderMin.toStringAsFixed(1)}'),
-                  Text('${dynSliderMax.toStringAsFixed(1)}'),
-                ],
-              ),
-            ],
-          );
-          break;
-        case 'progressIndicator':
-          double dynProgressValue = (properties['value'] ?? 0.5).toDouble().clamp(0.0, 1.0);
-          childWidget = Column(
-            children: [
-              Text('Dynamic Progress: ${(dynProgressValue * 100).toStringAsFixed(0)}%'),
-              LinearProgressIndicator(
-                value: dynProgressValue,
-                color: parseHexColor(properties['color'] ?? '0xFF2196F3'),
-                backgroundColor: parseHexColor(properties['backgroundColor'] ?? '0xFFE0E0E0'),
-              ),
-            ],
-          );
-          break;
-        case 'textField':
-          TextEditingController dynamicTextController = TextEditingController(text: properties['initialText'] ?? '');
-          childWidget = TextField(
-            controller: dynamicTextController,
-            decoration: InputDecoration(
-              hintText: properties['hintText'] ?? 'Dynamic Text Field',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular((properties['borderRadius'] ?? 8.0).toDouble()),
-                borderSide: BorderSide(color: parseHexColor(properties['borderColor'] ?? '0xFF9E9E9E') ?? Colors.grey),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular((properties['borderRadius'] ?? 8.0).toDouble()),
-                borderSide: BorderSide(color: parseHexColor(properties['borderColor'] ?? '0xFF9E9E9E') ?? Colors.grey, width: 1.0),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular((properties['borderRadius'] ?? 8.0).toDouble()),
-                borderSide: BorderSide(color: parseHexColor(properties['focusedBorderColor'] ?? '0xFF2196F3') ?? Colors.blue, width: 2.0),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-            ),
-            style: TextStyle(
-              fontSize: (properties['fontSize'] ?? 16.0).toDouble(),
-              color: parseHexColor(properties['textColor'] ?? '0xFF000000'),
-            ),
-            onChanged: (text) {
-              setState(() {
-                final int index = _dynamicWidgets.indexWhere((w) => w['id'] == widgetData['id']);
-                if (index != -1) {
-                  _dynamicWidgets[index]['properties']['initialText'] = text;
-                }
-              });
-            },
-          );
-          break;
-        default:
-          childWidget = Text('Unknown dynamic widget type: $widgetType');
-      }
-
-      return Padding( // Apply padding here
-        key: uniqueKey,
-        padding: EdgeInsets.all(dynamicPadding),
-        child: Align(
-          alignment: dynamicAlignment,
-          child: childWidget,
-        ),
-      );
-    } catch (e) {
-      debugPrint('Error building dynamic widget $widgetType: $e');
-      return SizedBox(
-        key: uniqueKey,
-        child: Text('Error rendering dynamic widget: $widgetType'),
-      );
-    }
-  }
-
-  Widget _buildProfileCard() {
-    return Visibility(
-      visible: _isProfileCardVisible,
-      child: Padding( // Apply padding here
-        padding: EdgeInsets.all(_profileCardPadding),
-        child: Align(
-          alignment: _profileCardAlignment,
-          child: AnimatedBuilder(
-            animation: _scaleAnimation,
-            builder: (context, child) {
-              return Transform.scale(
-                scale: _scaleAnimation.value,
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 20),
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: _profileCardBackgroundColor,
-                    borderRadius: BorderRadius.circular(_profileCardBorderRadius),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        spreadRadius: 1,
-                        blurRadius: 5,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Hero(
-                        tag: 'profile_image',
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(_profileImageBorderRadius),
-                          child: Image.network(
-                            'https://picsum.photos/150?random=4',
-                            width: _profileImageSize,
-                            height: _profileImageSize,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: _profileImageSize,
-                                height: _profileImageSize,
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.person, size: 50),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Visibility(
-                        visible: _isNameTextVisible,
-                        child: Padding( // Apply padding here
-                          padding: EdgeInsets.all(_nameTextPadding),
-                          child: Align(
-                            alignment: _nameTextAlignment,
-                            child: AnimatedDefaultTextStyle(
-                              duration: const Duration(milliseconds: 300),
-                              style: TextStyle(
-                                fontSize: _nameFontSize,
-                                fontWeight: _nameFontWeight,
-                                color: _nameTextColor,
-                              ),
-                              child: Text(
-                                _nameTextContent,
-                                textAlign: _nameTextAlign,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      if (_isTitleVisible)
-                        Padding( // Apply padding here
-                          padding: EdgeInsets.all(_titleTextPadding),
-                          child: Align(
-                            alignment: _titleTextAlignment,
-                            child: AnimatedDefaultTextStyle(
-                              duration: const Duration(milliseconds: 300),
-                              style: TextStyle(
-                                fontSize: _titleFontSize,
-                                color: _titleTextColor,
-                              ),
-                              child: Text(
-                                _titleTextContent,
-                                textAlign: _titleTextAlign,
-                              ),
-                            ),
-                          ),
-                        ),
-                      const SizedBox(height: 15),
-                      Visibility(
-                        visible: _isBioTextVisible,
-                        child: Padding( // Apply padding here
-                          padding: EdgeInsets.all(_bioTextPadding),
-                          child: Align(
-                            alignment: _bioTextAlignment,
-                            child: AnimatedDefaultTextStyle(
-                              duration: const Duration(milliseconds: 300),
-                              style: TextStyle(
-                                fontSize: _bioFontSize,
-                                color: _bioTextColor,
-                              ),
-                              child: Text(
-                                _bioTextContent,
-                                textAlign: _bioTextAlign,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildColorBox() {
-    return Visibility(
-      visible: _isColorBoxVisible,
-      child: Padding( // Apply padding here
-        padding: EdgeInsets.all(_colorBoxPadding),
-        child: Align(
-          alignment: _colorBoxAlignment,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            width: _colorBoxSize,
-            height: _colorBoxSize,
-            decoration: BoxDecoration(
-              color: _colorBoxBackgroundColor,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            margin: const EdgeInsets.only(bottom: 20),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDynamicButton() {
-    return Visibility(
-      visible: _isMainActionButtonVisible,
-      child: Padding(
-        padding: EdgeInsets.all(_mainActionButtonPadding), // Apply padding here
-        child: Align(
-          alignment: _mainActionButtonAlignment,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            child: ElevatedButton(
-              onPressed: () {
-                _showMessage('Button pressed! Current state: ${_getCurrentUIState().keys.length} properties');
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _buttonBackgroundColor,
-                foregroundColor: _buttonTextColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(_buttonBorderRadius),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                elevation: 3,
-              ),
-              child: Text(_buttonTextContent),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDynamicSwitch() {
-    return Visibility(
-      visible: _isToggleSwitchVisible,
-      child: Padding(
-        padding: EdgeInsets.all(_toggleSwitchPadding), // Apply padding here
-        child: Align(
-          alignment: _toggleSwitchAlignment,
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Feature Toggle',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  Switch(
-                    value: _switchValue,
-                    onChanged: (bool newValue) {
-                      setState(() {
-                        _switchValue = newValue;
-                      });
-                      _showMessage('Switch toggled to: $newValue');
-                    },
-                    activeColor: _switchActiveColor,
-                    inactiveThumbColor: _switchInactiveThumbColor,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDynamicSlider() {
-    return Visibility(
-      visible: _isSliderVisible,
-      child: Padding(
-        padding: EdgeInsets.all(_sliderPadding), // Apply padding here
-        child: Align(
-          alignment: _sliderAlignment,
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Slider Value: ${_sliderValue.toStringAsFixed(2)}',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  Slider(
-                    value: _sliderValue,
-                    min: _sliderMin,
-                    max: _sliderMax,
-                    activeColor: _sliderActiveColor,
-                    inactiveColor: _sliderInactiveColor,
-                    divisions: 20,
-                    label: _sliderValue.toStringAsFixed(2),
-                    onChanged: (double newValue) {
-                      setState(() {
-                        _sliderValue = newValue;
-                      });
-                    },
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('${_sliderMin.toStringAsFixed(1)}'),
-                      Text('${_sliderMax.toStringAsFixed(1)}'),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProgressIndicator() {
-    return Visibility(
-      visible: _isProgressIndicatorVisible,
-      child: Padding(
-        padding: EdgeInsets.all(_progressIndicatorPadding), // Apply padding here
-        child: Align(
-          alignment: _progressIndicatorAlignment,
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Progress: ${(_progressValue * 100).toStringAsFixed(0)}%',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 10),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 500),
-                    child: LinearProgressIndicator(
-                      value: _progressValue,
-                      color: _progressColor,
-                      backgroundColor: _progressBackgroundColor,
-                      minHeight: 8,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  SizedBox(
-                    width: 60,
-                    height: 60,
-                    child: CircularProgressIndicator(
-                      value: _progressValue,
-                      color: _progressColor,
-                      backgroundColor: _progressBackgroundColor,
-                      strokeWidth: 6,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImageGallery() {
-    return Visibility(
-      visible: _isImageGalleryVisible,
-      child: Padding(
-        padding: EdgeInsets.all(_imageGalleryPadding), // Apply padding here
-        child: Align(
-          alignment: _imageGalleryAlignment,
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Image Gallery',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 10),
-                  if (_imageUrls.isNotEmpty)
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: ClipRRect(
-                        key: ValueKey(_currentImageIndex),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          _imageUrls[_currentImageIndex],
-                          width: 200,
-                          height: 150,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 200,
-                              height: 150,
-                              color: Colors.grey[300],
-                              child: const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.broken_image, size: 40),
-                                  Text('Image Error', textAlign: TextAlign.center),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    )
-                  else
-                    Container(
-                      width: 200,
-                      height: 150,
-                      color: Colors.grey[300],
-                      child: const Center(
-                        child: Text('No Images Loaded', textAlign: TextAlign.center),
-                      ),
-                    ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back_ios),
-                        onPressed: () {
-                          setState(() {
-                            _currentImageIndex = (_currentImageIndex - 1 + _imageUrls.length) % _imageUrls.length;
-                          });
-                        },
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text('${_currentImageIndex + 1} of ${_imageUrls.length}'),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.arrow_forward_ios),
-                        onPressed: () {
-                          setState(() {
-                            _currentImageIndex = (_currentImageIndex + 1) % _imageUrls.length;
-                          });
-                        },
-                      ),
-                      IconButton(
-                        icon: Icon(_imageAutoPlay ? Icons.pause_circle : Icons.play_circle),
-                        onPressed: () {
-                          setState(() {
-                            _imageAutoPlay = !_imageAutoPlay;
-                            _startImageAutoPlayTimer();
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(_imageUrls.length, (index) {
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        width: _currentImageIndex == index ? 12 : 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: _currentImageIndex == index
-                              ? Theme.of(context).primaryColor
-                              : Colors.grey,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      );
-                    }),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStaticTextField() {
-    return Visibility(
-      visible: _isStaticTextFieldVisible,
-      child: Padding(
-        padding: EdgeInsets.all(_staticTextFieldPadding),
-        child: Align(
-          alignment: _staticTextFieldAlignment,
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 20),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: TextField(
-              controller: _staticTextFieldController,
-              decoration: const InputDecoration(
-                labelText: 'Static Text Field',
-                hintText: 'Enter text here',
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (text) {
-                setState(() {
-                  _staticTextFieldContent = text;
-                });
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCommandInput() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            spreadRadius: 1,
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _commandController,
-                  decoration: InputDecoration(
-                    hintText: 'Enter UI command (e.g., "make picture square")',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                    // Updated suffixIcon to include the microphone
-                    suffixIcon: IconButton(
-                      icon: Icon(_speechToText.isListening ? Icons.mic_off : Icons.mic),
-                      color: _speechToText.isListening ? Colors.red : Colors.blue,
-                      onPressed: _speechToText.isListening ? _stopListening : _startListening,
-                      tooltip: _speechToText.isListening ? 'Stop Listening' : 'Start Listening',
-                    ),
-                  ),
-                  onSubmitted: (_) => _handleCommand(),
-                  textInputAction: TextInputAction.send,
-                ),
-              ),
-              const SizedBox(width: 8), // Reduced spacing as mic is now in TextField
-              _isLoading
-                  ? const Padding(
-                padding: EdgeInsets.all(12),
-                child: CircularProgressIndicator(),
-              )
-                  : ElevatedButton.icon(
-                onPressed: _handleCommand,
-                icon: const Icon(Icons.send),
-                label: const Text('Apply'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (_lastCommand.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'Last command: "$_lastCommand"',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[600],
-                ),
-              ),
-            ),
-          if (_speechToText.isListening)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'Listening: "$_lastWordsSpoken"',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.blueGrey[600],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     debugPrint('Building MyHomePage widget tree.');
@@ -2522,21 +1741,234 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _buildProfileCard(),
-                      _buildColorBox(),
-                      _buildDynamicButton(),
-                      _buildDynamicSwitch(),
-                      _buildDynamicSlider(),
-                      _buildProgressIndicator(),
-                      _buildImageGallery(),
-                      _buildStaticTextField(), // Added the static text field here
-                      ..._dynamicWidgets.map((widgetData) => _buildDynamicWidget(widgetData)).toList(),
+                      ProfileCard(
+                        backgroundColor: _profileCardBackgroundColor,
+                        borderRadius: _profileCardBorderRadius,
+                        isVisible: _isProfileCardVisible,
+                        alignment: _profileCardAlignment,
+                        padding: _profileCardPadding,
+                        profileImageBorderRadius: _profileImageBorderRadius,
+                        profileImageSize: _profileImageSize,
+                        nameTextContent: _nameTextContent,
+                        nameFontSize: _nameFontSize,
+                        nameFontWeight: _nameFontWeight,
+                        nameTextColor: _nameTextColor,
+                        nameTextAlign: _nameTextAlign,
+                        isNameTextVisible: _isNameTextVisible,
+                        nameTextAlignment: _nameTextAlignment,
+                        nameTextPadding: _nameTextPadding,
+                        titleTextContent: _titleTextContent,
+                        titleFontSize: _titleFontSize,
+                        titleTextColor: _titleTextColor,
+                        isTitleVisible: _isTitleVisible,
+                        titleTextAlign: _titleTextAlign,
+                        titleTextAlignment: _titleTextAlignment,
+                        titleTextPadding: _titleTextPadding,
+                        bioTextContent: _bioTextContent,
+                        bioFontSize: _bioFontSize,
+                        bioTextColor: _bioTextColor,
+                        bioTextAlign: _bioTextAlign,
+                        isBioTextVisible: _isBioTextVisible,
+                        bioTextAlignment: _bioTextAlignment,
+                        bioTextPadding: _bioTextPadding,
+                        scaleAnimation: _scaleAnimation,
+                      ),
+                      ColorBoxWidget(
+                        backgroundColor: _colorBoxBackgroundColor,
+                        size: _colorBoxSize,
+                        isVisible: _isColorBoxVisible,
+                        alignment: _colorBoxAlignment,
+                        padding: _colorBoxPadding,
+                      ),
+                      DynamicButtonWidget(
+                        buttonTextContent: _buttonTextContent,
+                        buttonBackgroundColor: _buttonBackgroundColor,
+                        buttonTextColor: _buttonTextColor,
+                        buttonBorderRadius: _buttonBorderRadius,
+                        isVisible: _isMainActionButtonVisible,
+                        alignment: _mainActionButtonAlignment,
+                        padding: _mainActionButtonPadding,
+                        onPressed: () {
+                          _showMessage('Button pressed! Current state: ${_getCurrentUIState().keys.length} properties');
+                        },
+                      ),
+                      DynamicSwitchWidget(
+                        switchValue: _switchValue,
+                        activeColor: _switchActiveColor,
+                        inactiveThumbColor: _switchInactiveThumbColor,
+                        isVisible: _isToggleSwitchVisible,
+                        alignment: _toggleSwitchAlignment,
+                        padding: _toggleSwitchPadding,
+                        onChanged: (newValue) {
+                          setState(() {
+                            _switchValue = newValue;
+                          });
+                          _showMessage('Switch toggled to: $newValue');
+                        },
+                      ),
+                      DynamicSliderWidget(
+                        sliderValue: _sliderValue,
+                        sliderMin: _sliderMin,
+                        sliderMax: _sliderMax,
+                        sliderActiveColor: _sliderActiveColor,
+                        sliderInactiveColor: _sliderInactiveColor,
+                        isVisible: _isSliderVisible,
+                        alignment: _sliderAlignment,
+                        padding: _sliderPadding,
+                        onChanged: (newValue) {
+                          setState(() {
+                            _sliderValue = newValue;
+                          });
+                        },
+                      ),
+                      ProgressIndicatorWidget(
+                        progressValue: _progressValue,
+                        progressColor: _progressColor,
+                        progressBackgroundColor: _progressBackgroundColor,
+                        isVisible: _isProgressIndicatorVisible,
+                        alignment: _progressIndicatorAlignment,
+                        padding: _progressIndicatorPadding,
+                      ),
+                      ImageGalleryWidget(
+                        imageUrls: _imageUrls,
+                        currentImageIndex: _currentImageIndex,
+                        imageAutoPlay: _imageAutoPlay,
+                        isVisible: _isImageGalleryVisible,
+                        alignment: _imageGalleryAlignment,
+                        padding: _imageGalleryPadding,
+                        onNextImage: () {
+                          setState(() {
+                            _currentImageIndex = (_currentImageIndex + 1) % _imageUrls.length;
+                          });
+                        },
+                        onPrevImage: () {
+                          setState(() {
+                            _currentImageIndex = (_currentImageIndex - 1 + _imageUrls.length) % _imageUrls.length;
+                          });
+                        },
+                        onToggleAutoPlay: () {
+                          setState(() {
+                            _imageAutoPlay = !_imageAutoPlay;
+                            _startImageAutoPlayTimer();
+                          });
+                        },
+                      ),
+                      StaticTextFieldWidget(
+                        initialContent: _staticTextFieldContent,
+                        isVisible: _isStaticTextFieldVisible,
+                        alignment: _staticTextFieldAlignment,
+                        padding: _staticTextFieldPadding,
+                        onChanged: (newText) {
+                          setState(() {
+                            _staticTextFieldContent = newText;
+                          });
+                        },
+                      ),
+                      // Use the new DynamicWidgetBuilder for dynamic widgets
+                      ..._dynamicWidgets.map((widgetData) => DynamicWidgetBuilder(
+                        widgetData: widgetData,
+                        onPropertyChange: (id, property, value) {
+                          setState(() {
+                            final index = _dynamicWidgets.indexWhere((w) => w['id'] == id);
+                            if (index != -1) {
+                              _dynamicWidgets[index]['properties'][property] = value;
+                            }
+                          });
+                        },
+                        showMessage: _showMessage,
+                      )).toList(),
                       const SizedBox(height: 20),
                     ],
                   ),
                 ),
               ),
-              _buildCommandInput(),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      spreadRadius: 1,
+                      blurRadius: 10,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _commandController,
+                            decoration: InputDecoration(
+                              hintText: 'Enter UI command (e.g., "make picture square")',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                              // Removed: suffixIcon for microphone
+                              // suffixIcon: IconButton(
+                              //   icon: Icon(_speechToText.isListening ? Icons.mic_off : Icons.mic),
+                              //   color: _speechToText.isListening ? Colors.red : Colors.blue,
+                              //   onPressed: _speechToText.isListening ? _stopListening : _startListening,
+                              //   tooltip: _speechToText.isListening ? 'Stop Listening' : 'Start Listening',
+                              // ),
+                            ),
+                            onSubmitted: (_) => _handleCommand(),
+                            textInputAction: TextInputAction.send,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _isLoading
+                            ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: CircularProgressIndicator(),
+                        )
+                            : ElevatedButton.icon(
+                          onPressed: _handleCommand,
+                          icon: const Icon(Icons.send),
+                          label: const Text('Apply'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_lastCommand.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Last command: "$_lastCommand"',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ),
+                    // Removed: Speech listening text
+                    // if (_speechToText.isListening)
+                    //   Padding(
+                    //     padding: const EdgeInsets.only(top: 8),
+                    //     child: Text(
+                    //       'Listening: "$_lastWordsSpoken"',
+                    //       style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    //         color: Colors.blueGrey[600],
+                    //       ),
+                    //     ),
+                    //   ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
