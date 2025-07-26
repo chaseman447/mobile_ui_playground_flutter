@@ -36,6 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.2.1 # Add this line for general HTTP requests
   shared_preferences: ^2.2.3 # Add this line
+  speech_to_text: ^6.6.1 # Use the latest stable version
 
 dev_dependencies:
   flutter_test:

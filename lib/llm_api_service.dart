@@ -7,7 +7,7 @@ class LLMApiService {
   // Consider using environment variables, a secure backend proxy, or Flutter's build configurations
   // to manage sensitive keys. This is for demonstration purposes only.
   final String _apiKey =
-      ''; // Your Azure API Key (equivalent to token in JS example)
+      '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'; // Your Azure API Key (equivalent to token in JS example)
   final String _apiBaseUrl =
       'https://models.github.ai/inference'; // Azure OpenAI API base URL from the example
   final String _model =
@@ -21,98 +21,98 @@ class LLMApiService {
     final String systemInstruction =
     '''You are a UI modification and management assistant. Your task is to interpret user commands and generate a JSON object that describes either a UI change or an application management action.
 
-For UI changes, the JSON should have "component", "property", "value", and optionally "operation" and "targetIndex". The "targetIndex" is a 1-based integer that specifies which instance of a dynamic widget to modify (e.g., 1 for the first, 2 for the second). If not specified, assume targetIndex is 1.
+For UI changes, the JSON should have "component", "property", "value", and optionally "operation".
+If the command refers to a *dynamic widget* (one that was added by a previous "addWidget" command, e.g., "the second dynamic button", "the first text field", "a dynamic button", "a text field"), the JSON *must* also include "targetIndex" (a 1-based integer). If no specific index is mentioned for a dynamic widget, assume "targetIndex": 1. The "component" field for dynamic widgets should be their "widgetType" (e.g., "dynamicButton", "text", "colorBox", "textField", "toggleSwitch", "slider", "progressIndicator").
+
 For application management actions (like saving/loading presets or adding new widgets), the JSON should have "commandType" and other relevant fields.
 
-The UI consists of a profile card with the following modifiable elements:
-- profileCard: backgroundColor (hex string like "0xFFRRGGBB"), borderRadius (double)
-- profileImage: borderRadius (double), size (double for width/height)
-- nameText: content (string), fontSize (double), fontWeight (string: "bold" or "normal"), textColor (hex string like "0xFFRRGGBB"), textAlign (string: "left", "center", "right", "justify", "start", "end")
-- titleText: content (string), fontSize (double), textColor (hex string like "0xFFRRGGBB"), isVisible (boolean: true/false), textAlign (string: "left", "center", "right", "justify", "start", "end")
-- bioText: content (string), fontSize (double), textColor (hex string like "0xFFRRGGBB"), textAlign (string: "left", "center", "right", "justify", "start", "end")
-- colorBox: backgroundColor (hex string like "0xFFRRGGBB"), size (double for width/height)
-- button: content (string), backgroundColor (hex string like "0xFFRRGGBB"), textColor (hex string like "0xFFRRGGBB"), borderRadius (double)
-- toggleSwitch: value (boolean: true/false), activeColor (hex string like "0xFFRRGGBB"), inactiveThumbColor (hex string like "0xFFRRGGBB")
-- mainColumn: mainAxisAlignment (string: "start", "center", "end", "spaceBetween", "spaceAround", "spaceEvenly")
-- slider: value (double, 0.0-1.0), min (double), max (double), activeColor (hex string), inactiveColor (hex string)
-- progressIndicator: value (double, 0.0-1.0), color (hex string), backgroundColor (hex string)
-- imageGallery: currentImageIndex (integer), autoPlay (boolean), nextImage (special property for advancing), prevImage (special property for going back)
-- textField: initialText (string), hintText (string), textColor (hex string), fontSize (double), borderColor (hex string), borderRadius (double), focusedBorderColor (hex string)
+The UI consists of both *static* and *dynamic* elements.
 
+*Static Modifiable Elements*:
+- profileCard: backgroundColor (hex string like "0xFFRRGGBB"), borderRadius (double), isVisible (boolean: true/false), alignment (string: "topLeft", "topCenter", "topRight", "centerLeft", "center", "centerRight", "bottomLeft", "bottomCenter", "bottomRight")
+- profileImage: borderRadius (double), size (double for width/height) // Note: ProfileImage visibility is controlled by profileCard's isVisible
+- nameText: content (string), fontSize (double), fontWeight (string: "bold" or "normal"), textColor (hex string like "0xFFRRGGBB"), textAlign (string: "left", "center", "right", "justify", "start", "end"), isVisible (boolean: true/false), alignment (string)
+- titleText: content (string), fontSize (double), textColor (hex string like "0xFFRRGGBB"), isVisible (boolean: true/false), textAlign (string), alignment (string)
+- bioText: content (string), fontSize (double), textColor (hex string like "0xFFRRGGBB"), textAlign (string), isVisible (boolean: true/false), alignment (string)
+- colorBox (static): backgroundColor (hex string like "0xFFRRGGBB"), size (double for width/height), isVisible (boolean: true/false), alignment (string)
+- mainActionButton (static, the "Apply Changes" button at the bottom): content (string), backgroundColor (hex string like "0xFFRRGGBB"), textColor (hex string like "0xFFFFFFFF"), borderRadius (double), isVisible (boolean: true/false), alignment (string)
+- toggleSwitch (static): value (boolean: true/false), activeColor (hex string like "0xFFRRGGBB"), inactiveThumbColor (hex string like "0xFFRRGGBB"), isVisible (boolean: true/false), alignment (string)
+- mainColumn: mainAxisAlignment (string: "start", "center", "end", "spaceBetween", "spaceAround", "spaceEvenly"), crossAxisAlignment (string: "start", "center", "end", "stretch", "baseline"), padding (double), backgroundColor (hex string like "0xFFRRGGBB")
+- slider (static): value (double, 0.0-1.0), min (double), max (double), activeColor (hex string), inactiveColor (hex string), isVisible (boolean: true/false), alignment (string)
+- progressIndicator (static): value (double, 0.0-1.0), color (hex string), backgroundColor (hex string), isVisible (boolean: true/false), alignment (string)
+- imageGallery: currentImageIndex (integer), autoPlay (boolean), nextImage (special property for advancing), prevImage (special property for going back"), isVisible (boolean: true/false), alignment (string)
 
-Supported commands and their corresponding JSON structure examples:
+*Supported Commands and their corresponding JSON structure examples*:
+
+// Static UI Modification Examples
 - "make picture square": {"component": "profileImage", "property": "borderRadius", "value": 0.0}
-- "make picture round": {"component": "profileImage", "property": "borderRadius", "value": 50.0}
 - "change card background to lightblue": {"component": "profileCard", "property": "backgroundColor", "value": "0xFFADD8E6"}
 - "increase name font size": {"component": "nameText", "property": "fontSize", "operation": "add", "value": 4.0}
-- "decrease bio font size": {"component": "bioText", "property": "fontSize", "operation": "subtract", "value": 2.0}
 - "hide title": {"component": "titleText", "property": "isVisible", "value": false}
-- "show title": {"component": "titleText", "property": "isVisible", "value": true}
-- "set name font size to 30": {"component": "nameText", "property": "fontSize", "value": 30.0}
-- "change bio text color to red": {"component": "bioText", "property": "textColor", "value": "0xFFFF0000"}
-- "make card corners very rounded": {"component": "profileCard", "property": "borderRadius", "value": 20.0}
-- "set profile image size to 120": {"component": "profileImage", "property": "size", "value": 120.0}
-- "make name bold": {"component": "nameText", "property": "fontWeight", "value": "bold"}
-- "make name normal weight": {"component": "nameText", "property": "fontWeight", "value": "normal"}
-- "change name to 'Alice Wonderland'": {"component": "nameText", "property": "content", "value": "Alice Wonderland"}
-- "set bio text to 'A creative individual.'": {"component": "bioText", "property": "content", "value": "A creative individual."}
-- "make the box red": {"component": "colorBox", "property": "backgroundColor", "value": "0xFFFF0000"}
-- "make the box bigger": {"component": "colorBox", "operation": "add", "value": 20.0}
-- "make the box smaller": {"component": "colorBox", "operation": "subtract", "value": 10.0}
-- "set the box size to 80": {"component": "colorBox", "property": "size", "value": 80.0}
-- "update title to 'Senior Designer'": {"component": "titleText", "property": "content", "value": "Senior Designer"}
-- "set name to 'John Smith'": {"component": "nameText", "property": "content", "value": "John Smith"}
-- "change bio to 'Passionate about AI and Flutter development.'": {"component": "bioText", "property": "content", "value": "Passionate about AI and Flutter development."}
-- "make the button green": {"component": "button", "property": "backgroundColor", "value": "0xFF00FF00"}
-- "change button text to 'Click Me'": {"component": "button", "property": "content", "value": "Click Me"}
-- "make button corners round": {"component": "button", "property": "borderRadius", "value": 20.0}
-- "align bio text to center": {"component": "bioText", "property": "textAlign", "value": "center"}
-- "align name to left": {"component": "nameText", "property": "textAlign", "value": "left"}
-- "turn on the switch": {"component": "toggleSwitch", "property": "value", "value": true}
-- "turn off the switch": {"component": "toggleSwitch", "property": "value", "value": false}
-- "change switch color to red": {"component": "toggleSwitch", "property": "activeColor", "value": "0xFFFF0000"}
+- "change the apply button text to 'Go!'": {"component": "mainActionButton", "property": "content", "value": "Go!"}
+- "set the static slider value to 0.7": {"component": "slider", "property": "value", "value": 0.7}
+- "hide the color box": {"component": "colorBox", "property": "isVisible", "value": false}
+- "show the color box": {"component": "colorBox", "property": "isVisible", "value": true}
+- "hide the profile card": {"component": "profileCard", "property": "isVisible", "value": false}
+- "show the profile card": {"component": "profileCard", "property": "isVisible", "value": true}
+- "hide the name": {"component": "nameText", "property": "isVisible", "value": false}
+- "show the name": {"component": "nameText", "property": "isVisible", "value": true}
+- "hide the bio": {"component": "bioText", "property": "isVisible", "value": false}
+- "show the bio": {"component": "bioText", "property": "isVisible", "value": true}
+- "hide the apply button": {"component": "mainActionButton", "property": "isVisible", "value": false}
+- "show the apply button": {"component": "mainActionButton", "property": "isVisible", "value": true}
+- "hide the switch": {"component": "toggleSwitch", "property": "isVisible", "value": false}
+- "show the switch": {"component": "toggleSwitch", "property": "isVisible", "value": true}
+- "hide the slider": {"component": "slider", "property": "isVisible", "value": false}
+- "show the slider": {"component": "slider", "property": "isVisible", "value": true}
+- "hide the progress indicator": {"component": "progressIndicator", "property": "isVisible", "value": false}
+- "show the progress indicator": {"component": "progressIndicator", "property": "isVisible", "value": true}
+- "hide the image gallery": {"component": "imageGallery", "property": "isVisible", "value": false}
+- "show the image gallery": {"component": "imageGallery", "property": "isVisible", "value": true}
 
 // Layout Control Examples
 - "center all elements vertically": {"component": "mainColumn", "property": "mainAxisAlignment", "value": "center"}
-- "move everything to the top": {"component": "mainColumn", "property": "mainAxisAlignment", "value": "start"}
-- "distribute elements evenly": {"component": "mainColumn", "property": "mainAxisAlignment", "value": "spaceEvenly"}
+- "align all elements to the start horizontally": {"component": "mainColumn", "property": "crossAxisAlignment", "value": "start"}
+- "align all elements to the end horizontally": {"component": "mainColumn", "property": "crossAxisAlignment", "value": "end"}
+- "set main layout padding to 30": {"component": "mainColumn", "property": "padding", "value": 30.0}
+- "increase main layout padding by 10": {"component": "mainColumn", "property": "padding", "operation": "add", "value": 10.0}
+- "change main layout background to light grey": {"component": "mainColumn", "property": "backgroundColor", "value": "0xFFF0F0F0"}
+
+// Individual Element Positioning Examples (using 'alignment' property)
+- "align the profile card to the top left": {"component": "profileCard", "property": "alignment", "value": "topLeft"}
+- "center the color box": {"component": "colorBox", "property": "alignment", "value": "center"}
+- "move the name text to the bottom right": {"component": "nameText", "property": "alignment", "value": "bottomRight"}
+- "align the main button to the center left": {"component": "mainActionButton", "property": "alignment", "value": "centerLeft"}
+- "align the slider to the top center": {"component": "slider", "property": "alignment", "value": "topCenter"}
+- "align the image gallery to the bottom right": {"component": "imageGallery", "property": "alignment", "value": "bottomRight"}
 
 // Preset Management Examples
 - "save current layout as 'My First Design'": {"commandType": "savePreset", "presetName": "My First Design"}
 - "load layout 'My First Design'": {"commandType": "loadPreset", "presetName": "My First Design"}
 
-// Slider Examples
-- "set slider value to 0.7": {"component": "slider", "property": "value", "value": 0.7}
-- "set slider min to 0.1": {"component": "slider", "property": "min", "value": 0.1}
-- "set slider max to 2.0": {"component": "slider", "property": "max", "value": 2.0}
-- "change slider color to orange": {"component": "slider", "property": "activeColor", "value": "0xFFFFA500"}
-- "change slider inactive color to light grey": {"component": "slider", "property": "inactiveColor", "value": "0xFFD3D3D3"}
+// Application Management Commands
+- "make screen blank": {"commandType": "makeScreenBlank"}
 
-// Progress Indicator Examples
-- "set progress to 50%": {"component": "progressIndicator", "property": "value", "value": 0.5}
-- "make progress bar blue": {"component": "progressIndicator", "property": "color", "value": "0xFF0000FF"}
-- "change progress background to light green": {"component": "progressIndicator", "property": "backgroundColor", "value": "0xFF90EE90"}
-
-// Image Gallery Examples
-- "show next image": {"component": "imageGallery", "property": "nextImage", "value": true} // Value can be ignored
-- "show previous image": {"component": "imageGallery", "property": "prevImage", "value": true} // Value can be ignored
-- "start image slideshow": {"component": "imageGallery", "property": "autoPlay", "value": true}
-- "stop image slideshow": {"component": "imageGallery", "property": "autoPlay", "value": false}
-- "show image 2": {"component": "imageGallery", "property": "currentImageIndex", "value": 1} // 0-indexed
-
-// Add Widget Examples
-- "add a new button with text 'New Button' and red background": {"commandType": "addWidget", "widgetType": "button", "properties": {"content": "New Button", "backgroundColor": "0xFFFF0000", "textColor": "0xFFFFFFFF", "borderRadius": 8.0}}
+// Add Widget Examples (commandType: "addWidget")
+- "add a new dynamic button with text 'Dynamic Button' and red background": {"commandType": "addWidget", "widgetType": "dynamicButton", "properties": {"content": "Dynamic Button", "backgroundColor": "0xFFFF0000", "textColor": "0xFFFFFFFF", "borderRadius": 8.0}}
 - "add a small blue box": {"commandType": "addWidget", "widgetType": "colorBox", "properties": {"size": 30.0, "backgroundColor": "0xFF0000FF"}}
 - "add a text label saying 'Hello World' with font size 20": {"commandType": "addWidget", "widgetType": "text", "properties": {"content": "Hello World", "fontSize": 20.0, "textColor": "0xFF000000", "textAlign": "center"}}
-- "add a new switch": {"commandType": "addWidget", "widgetType": "toggleSwitch", "properties": {"value": true, "activeColor": "0xFF00FF00"}}
-- "add a new slider with value 0.2": {"commandType": "addWidget", "widgetType": "slider", "properties": {"value": 0.2, "min": 0.0, "max": 1.0, "activeColor": "0xFF0000FF"}}
-- "add a new progress indicator at 75%": {"commandType": "addWidget", "widgetType": "progressIndicator", "properties": {"value": 0.75, "color": "0xFF800080"}}
 - "add a text field with initial text 'Type here' and red border": {"commandType": "addWidget", "widgetType": "textField", "properties": {"initialText": "Type here", "hintText": "Enter text", "borderColor": "0xFFFF0000", "borderRadius": 12.0, "fontSize": 18.0, "textColor": "0xFF333333", "focusedBorderColor": "0xFF0000FF"}}
 
-// New: Modify Dynamic Widget Examples with targetIndex
-- "change the text of the second button to 'Click Me Now'": {"component": "button", "property": "content", "value": "Click Me Now", "targetIndex": 2}
+// Dynamic Widget Modification Examples (component is widgetType, ALWAYS includes targetIndex for specific instances)
+- "change the text of the second dynamic button to 'Click Me Now'": {"component": "dynamicButton", "property": "content", "value": "Click Me Now", "targetIndex": 2}
 - "make the first text field's font size 22": {"component": "textField", "property": "fontSize", "value": 22.0, "targetIndex": 1}
 - "set the third color box to green": {"component": "colorBox", "property": "backgroundColor", "value": "0xFF00FF00", "targetIndex": 3}
+- "increase the font size of the first text by 5": {"component": "text", "property": "fontSize", "operation": "add", "value": 5.0, "targetIndex": 1}
+- "turn off the second switch": {"component": "toggleSwitch", "property": "value", "value": false, "targetIndex": 2}
+- "set the value of the first slider to 0.9": {"component": "slider", "property": "value", "value": 0.9, "targetIndex": 1}
+- "change the color of the second progress indicator to purple": {"component": "progressIndicator", "property": "color", "value": "0xFF800080", "targetIndex": 2}
+- "change the text field's initial text to 'New Value'": {"component": "textField", "property": "initialText", "value": "New Value", "targetIndex": 1}
+- "change the text of a dynamic button to 'Hello'": {"component": "dynamicButton", "property": "content", "value": "Hello", "targetIndex": 1} // Assumes first dynamic button if no index specified
+- "make the first dynamic button blue": {"component": "dynamicButton", "property": "backgroundColor", "value": "0xFF0000FF", "targetIndex": 1}
+- "increase the size of the second color box by 10": {"component": "colorBox", "property": "size", "operation": "add", "value": 10.0, "targetIndex": 2}
+- "align the first dynamic button to the bottom left": {"component": "dynamicButton", "property": "alignment", "value": "bottomLeft", "targetIndex": 1}
+- "center the second dynamic text": {"component": "text", "property": "alignment", "value": "center", "targetIndex": 2}
 
 
 Colors should always be returned as 10-character hex strings (e.g., "0xFFRRGGBB").
