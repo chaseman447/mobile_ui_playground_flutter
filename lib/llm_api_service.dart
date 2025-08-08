@@ -7,7 +7,7 @@ class LLMApiService {
   // Consider using environment variables, a secure backend proxy, or Flutter's build configurations
   // to manage sensitive keys. This is for demonstration purposes only.
   final String _apiKey =
-      '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'; // Your Azure API Key (equivalent to token in JS example)
+      ''; // Your Azure API Key (equivalent to token in JS example)
   final String _apiBaseUrl =
       'https://models.github.ai/inference'; // Azure OpenAI API base URL from the example
   final String _model =
