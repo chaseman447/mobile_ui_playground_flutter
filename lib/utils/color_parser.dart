@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 /// Parses a hex color string into a Flutter Color object.
-/// Supports formats like "RRGGBB", "#RRGGBB", "AARRGGBB", or "#AARRGGBB".
+/// Supports formats like "RRGGBB", "#RRGGBB", "AARRGGBB", "#AARRGGBB", "0xRRGGBB", or "0xAARRGGBB".
 /// Returns null if the string cannot be parsed into a valid color.
 Color? parseHexColor(String hexColorString) {
-  // Remove any '#' prefix
-  String cleanHex = hexColorString.replaceAll('#', '');
+  // Remove any '#' or '0x' prefix
+  String cleanHex = hexColorString.replaceAll('#', '').replaceAll('0x', '').replaceAll('0X', '');
 
   // Ensure the string is a valid hex string (contains only hex characters)
   if (!RegExp(r'^[0-9a-fA-F]+$').hasMatch(cleanHex)) {

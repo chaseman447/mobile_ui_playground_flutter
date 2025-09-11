@@ -7,11 +7,11 @@ class LLMApiService {
   // Consider using environment variables, a secure backend proxy, or Flutter's build configurations
   // to manage sensitive keys. This is for demonstration purposes only.
   final String _apiKey =
-      ''; // Your Azure API Key (equivalent to token in JS example)
+      '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'; // OpenRouter API Key
   final String _apiBaseUrl =
-      'https://models.github.ai/inference'; // Azure OpenAI API base URL from the example
+      'https://openrouter.ai/api/v1'; // OpenRouter API base URL
   final String _model =
-      'openai/gpt-4.1-nano'; // Model name from the JavaScript example
+      'qwen/qwen3-coder:free'; // OpenRouter model name
 
   Future<Map<String, dynamic>?> generateStructuredOutput(
       String userCommand,

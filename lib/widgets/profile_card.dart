@@ -11,6 +11,7 @@ class ProfileCard extends StatelessWidget {
 
   final double profileImageBorderRadius;
   final double profileImageSize;
+  final String? profileImageUrl; // Added: Optional URL for profile image
 
   final String nameTextContent;
   final double nameFontSize;
@@ -48,6 +49,7 @@ class ProfileCard extends StatelessWidget {
     required this.padding,
     required this.profileImageBorderRadius,
     required this.profileImageSize,
+    this.profileImageUrl, // Updated: Made optional
     required this.nameTextContent,
     required this.nameFontSize,
     required this.nameFontWeight,
@@ -75,6 +77,14 @@ class ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Determine the image URL to use, with a fallback to a placeholder.
+    // Ensure the URL is not null, not empty, and can be parsed as a valid absolute URI.
+    final String imageUrlToUse = (profileImageUrl != null &&
+        profileImageUrl!.isNotEmpty &&
+        Uri.tryParse(profileImageUrl!)?.hasAbsolutePath == true)
+        ? profileImageUrl!
+        : 'https://placehold.co/150x150/cccccc/ffffff?text=Image+Error';
+
     return Visibility(
       visible: isVisible,
       child: Padding(
@@ -109,11 +119,12 @@ class ProfileCard extends StatelessWidget {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(profileImageBorderRadius),
                           child: Image.network(
-                            'https://picsum.photos/150?random=4',
+                            imageUrlToUse, // Using the defensively checked URL
                             width: profileImageSize,
                             height: profileImageSize,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
+                              debugPrint('Error loading profile image: $error');
                               return Container(
                                 width: profileImageSize,
                                 height: profileImageSize,

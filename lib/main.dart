@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'navigation/main_navigation.dart';
+
+// Keep existing imports for backward compatibility
 import 'package:mobile_ui_playground_flutter/llm_api_service.dart'; // Import your LLM service
 import 'package:shared_preferences/shared_preferences.dart'; // Import shared_preferences
 import 'dart:convert'; // For json.encode and json.decode
@@ -12,7 +15,7 @@ import 'widgets/color_box_widget.dart';
 import 'widgets/dynamic_button_widget.dart';
 import 'widgets/dynamic_switch_widget.dart';
 import 'widgets/dynamic_slider_widget.dart';
-import 'widgets/progress_indicator_widget.dart';
+import 'widgets/progress_indicator_widget.dart'; // Corrected import
 import 'widgets/image_gallery_widget.dart';
 import 'widgets/static_text_field_widget.dart';
 import 'widgets/dynamic_widget_builder.dart'; // New: For dynamic widgets
@@ -34,7 +37,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: const MyHomePage(),
+      home: const MainNavigation(),
     );
   }
 }
@@ -57,6 +60,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
 
   double _profileImageBorderRadius = 50.0;
   double _profileImageSize = 100.0;
+  // Ensure this URL is always valid. It's used as a default and should never be empty.
+  String _profileImageUrl = 'https://picsum.photos/150?random=4';
 
   String _nameTextContent = 'Jane Doe';
   double _nameFontSize = 24.0;
@@ -133,7 +138,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
 
   // Image Gallery states
   final List<String> _imageUrls = List.generate(3, (index) {
-    // Generate random images for initial load
+    // Generate random images for initial load, ensuring they are valid.
     final random = Random();
     return 'https://picsum.photos/150/150?random=${random.nextInt(1000)}';
   });
@@ -236,6 +241,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       'profileCardPadding': _profileCardPadding,
       'profileImageBorderRadius': _profileImageBorderRadius,
       'profileImageSize': _profileImageSize,
+      'profileImageUrl': _profileImageUrl, // Added to state
       'nameTextContent': _nameTextContent,
       'nameFontSize': _nameFontSize,
       'nameFontWeight': _nameFontWeight.index,
@@ -320,6 +326,14 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
 
         _profileImageBorderRadius = (state['profileImageBorderRadius'] ?? 50.0).toDouble();
         _profileImageSize = (state['profileImageSize'] ?? 100.0).toDouble();
+        // Defensive check for profileImageUrl when loading from state
+        final String loadedProfileImageUrl = state['profileImageUrl'] ?? '';
+        if (loadedProfileImageUrl.isNotEmpty && Uri.tryParse(loadedProfileImageUrl)?.hasAbsolutePath == true) {
+          _profileImageUrl = loadedProfileImageUrl;
+        } else {
+          _profileImageUrl = 'https://picsum.photos/150?random=4'; // Fallback to a safe default
+          debugPrint('Invalid profileImageUrl loaded from state: "$loadedProfileImageUrl". Using default.');
+        }
 
         _nameTextContent = state['nameTextContent'] ?? 'Jane Doe';
         _nameFontSize = (state['nameFontSize'] ?? 24.0).toDouble();
@@ -539,10 +553,19 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       if (instruction != null && instruction.isNotEmpty) {
         debugPrint('LLM Instruction Received: $instruction'); // Added for debugging
         if (instruction.containsKey('commandType')) {
-          if (instruction['commandType'] == 'addWidget') {
-            _handleAddWidgetCommand(instruction);
-          } else {
-            await _handlePresetCommand(instruction);
+          switch (instruction['commandType']) {
+            case 'addWidget':
+              _handleAddWidgetCommand(instruction);
+              break;
+            case 'deleteWidget':
+              _handleDeleteWidgetCommand(instruction);
+              break;
+            case 'reorderWidget':
+              _handleReorderWidgetCommand(instruction);
+              break;
+            default:
+              await _handlePresetCommand(instruction);
+              break;
           }
         } else {
           bool handled = _applyInstructionToStaticComponent(instruction);
@@ -555,7 +578,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         _showMessage('Could not understand the command. Please try rephrasing.', isError: true);
       }
     } catch (e) {
-      debugPrint('Command processing error: $e');
+      debugPrint('Command processing error: $e'); // This is where it's caught
       _showMessage('Error processing command: ${e.toString()}', isError: true);
     } finally {
       setState(() => _isLoading = false);
@@ -594,6 +617,17 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     }
 
     setState(() {
+      // Validate image URL for dynamicImage when adding
+      if (widgetType == 'dynamicImage' && properties.containsKey('imageUrl')) {
+        final String imageUrl = properties['imageUrl'] ?? '';
+        if (imageUrl.isNotEmpty && Uri.tryParse(imageUrl)?.hasAbsolutePath == true) {
+          properties['imageUrl'] = imageUrl;
+        } else {
+          properties['imageUrl'] = 'https://placehold.co/150x150/cccccc/ffffff?text=Invalid+Image';
+          _showMessage('Invalid or empty image URL provided for dynamic image. Using a placeholder.', isError: true);
+        }
+      }
+
       _dynamicWidgets.add({
         'widgetType': widgetType,
         'properties': properties,
@@ -601,6 +635,84 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       });
       _showMessage('Added new $widgetType widget!');
       debugPrint('Dynamic widgets: $_dynamicWidgets');
+    });
+  }
+
+  void _handleDeleteWidgetCommand(Map<String, dynamic> instruction) {
+    final String? widgetTypeToDelete = instruction['widgetType'];
+    final int? targetIndex = instruction['targetIndex']; // 1-based index
+
+    if (widgetTypeToDelete == null) {
+      _showMessage('Invalid deleteWidget command: widgetType is missing.', isError: true);
+      return;
+    }
+
+    setState(() {
+      List<int> indicesToRemove = [];
+      int count = 0;
+      for (int i = 0; i < _dynamicWidgets.length; i++) {
+        if (_dynamicWidgets[i]['widgetType'].toLowerCase() == widgetTypeToDelete.toLowerCase()) {
+          count++;
+          if (targetIndex == null || count == targetIndex) {
+            indicesToRemove.add(i);
+            if (targetIndex != null) break; // If a specific index is targeted, stop after finding it
+          }
+        }
+      }
+
+      if (indicesToRemove.isNotEmpty) {
+        // Remove in reverse order to avoid index shifting issues
+        for (int i = indicesToRemove.length - 1; i >= 0; i--) {
+          _dynamicWidgets.removeAt(indicesToRemove[i]);
+        }
+        _showMessage('Deleted ${indicesToRemove.length} "$widgetTypeToDelete" widget(s).');
+      } else {
+        _showMessage('No "$widgetTypeToDelete" widget found to delete or invalid index specified.', isError: true);
+      }
+      debugPrint('Dynamic widgets after deletion: $_dynamicWidgets');
+    });
+  }
+
+  void _handleReorderWidgetCommand(Map<String, dynamic> instruction) {
+    final String? widgetType = instruction['widgetType'];
+    final int? sourceIndex = instruction['sourceIndex']; // 1-based index
+    final int? destinationIndex = instruction['destinationIndex']; // 1-based index
+
+    if (widgetType == null || sourceIndex == null || destinationIndex == null) {
+      _showMessage('Invalid reorderWidget command: missing widgetType, sourceIndex, or destinationIndex.', isError: true);
+      return;
+    }
+
+    setState(() {
+      int actualSourceListIndex = -1;
+      int actualDestinationListIndex = -1;
+      int count = 0;
+      // Find the actual 0-based index in the _dynamicWidgets list
+      // for the Nth occurrence of the specified widgetType
+      for (int i = 0; i < _dynamicWidgets.length; i++) {
+        if (_dynamicWidgets[i]['widgetType'].toLowerCase() == widgetType.toLowerCase()) {
+          count++;
+          if (count == sourceIndex) {
+            actualSourceListIndex = i;
+          }
+          if (count == destinationIndex) {
+            actualDestinationListIndex = i;
+          }
+        }
+      }
+
+      if (actualSourceListIndex != -1 && actualDestinationListIndex != -1) {
+        if (actualSourceListIndex == actualDestinationListIndex) {
+          _showMessage('Widget is already at the target position.');
+          return;
+        }
+        final itemToMove = _dynamicWidgets.removeAt(actualSourceListIndex);
+        _dynamicWidgets.insert(actualDestinationListIndex, itemToMove);
+        _showMessage('Reordered "$widgetType" from position $sourceIndex to $destinationIndex.');
+      } else {
+        _showMessage('Could not find "$widgetType" at source or destination index for reordering. Please check indices and widget type.', isError: true);
+      }
+      debugPrint('Dynamic widgets after reordering: $_dynamicWidgets');
     });
   }
 
@@ -629,6 +741,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         }
       }
     } else {
+      // If no specific index, target the first found widget of that type
       for (int i = 0; i < _dynamicWidgets.length; i++) {
         if (_dynamicWidgets[i]['widgetType'] == component) {
           targetIndexInList = i;
@@ -837,9 +950,16 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                 targetProperties['isVisible'] = value;
               }
               break;
-            case 'dynamicImage': // NEW: Dynamic Image modifications
+            case 'dynamicImage': // Dynamic Image modifications
               if (property == 'imageUrl' && value is String) {
-                targetProperties['imageUrl'] = value;
+                // Defensive check for empty or invalid image URLs
+                if (value.isNotEmpty && Uri.tryParse(value)?.hasAbsolutePath == true) {
+                  targetProperties['imageUrl'] = value;
+                } else {
+                  // Fallback to a placeholder if the URL is empty or malformed
+                  targetProperties['imageUrl'] = 'https://placehold.co/150x150/cccccc/ffffff?text=Invalid+Image';
+                  _showMessage('Invalid or empty image URL provided. Using a placeholder.', isError: true);
+                }
               } else if (property == 'width' && value is num) {
                 final newValue = value.toDouble();
                 if (operation == 'add') {
@@ -877,7 +997,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                 targetProperties['isVisible'] = value;
               }
               break;
-            case 'dynamicCard': // NEW: Dynamic Card modifications
+            case 'dynamicCard': // Dynamic Card modifications
               if (property == 'backgroundColor' && value is String) {
                 targetProperties['backgroundColor'] = value;
               } else if (property == 'borderRadius' && value is num) {
@@ -908,9 +1028,15 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                 targetProperties['isVisible'] = value;
               }
               break;
-            case 'dynamicIcon': // NEW: Dynamic Icon modifications
+            case 'dynamicIcon': // Dynamic Icon modifications
               if (property == 'iconName' && value is String) {
-                targetProperties['iconName'] = value;
+                // You might want a lookup table here for actual IconData
+                // For now, ensuring it's not empty string, as a basic guard.
+                if (value.isNotEmpty) {
+                  targetProperties['iconName'] = value;
+                } else {
+                  _showMessage('Icon name cannot be empty. Using default.', isError: true);
+                }
               } else if (property == 'size' && value is num) {
                 final newValue = value.toDouble();
                 if (operation == 'add') {
@@ -937,7 +1063,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                 targetProperties['isVisible'] = value;
               }
               break;
-            case 'dynamicDivider': // NEW: Dynamic Divider modifications
+            case 'dynamicDivider': // Dynamic Divider modifications
               if (property == 'color' && value is String) {
                 targetProperties['color'] = value;
               } else if (property == 'thickness' && value is num) {
@@ -972,6 +1098,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
               _showMessage('Cannot modify dynamic widget of type: $component', isError: true);
               break;
           }
+          // Create a new map to ensure setState detects a change
           _dynamicWidgets[targetIndexInList!] = Map.from(_dynamicWidgets[targetIndexInList!]);
           debugPrint('Modified dynamic widget: $_dynamicWidgets');
         } catch (e) {
@@ -1081,6 +1208,18 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         break;
       case 'profileImageSize':
         if (value is num) _profileImageSize = value.toDouble().clamp(50.0, 200.0);
+        break;
+      case 'profileImageUrl':
+      // Robust validation for profileImageUrl updates
+        if (value is String) {
+          if (value.isNotEmpty && Uri.tryParse(value)?.hasAbsolutePath == true) {
+            _profileImageUrl = value;
+          } else {
+            _profileImageUrl = 'https://placehold.co/150x150/cccccc/ffffff?text=Invalid+Image';
+            _showMessage('Invalid or empty profileImageUrl provided. Using a placeholder.', isError: true);
+            debugPrint('LLM tried to set an invalid profileImageUrl: "$value"');
+          }
+        }
         break;
     }
   }
@@ -1510,6 +1649,30 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
           }
         }
         break;
+      case 'imageUrls':
+        if (value is List<dynamic>) {
+          // Validate each URL in the list
+          List<String> newImageUrls = [];
+          for (var url in value) {
+            if (url is String && url.isNotEmpty && Uri.tryParse(url)?.hasAbsolutePath == true) {
+              newImageUrls.add(url);
+            } else {
+              debugPrint('Invalid image URL in list: "$url". Skipping.');
+            }
+          }
+          if (newImageUrls.isNotEmpty) {
+            _imageUrls.clear();
+            _imageUrls.addAll(newImageUrls);
+            // Reset current index if the list changes and is smaller
+            if (_currentImageIndex >= _imageUrls.length) {
+              _currentImageIndex = max(0, _imageUrls.length - 1);
+            }
+            _showMessage('Image gallery URLs updated.', isError: false);
+          } else {
+            _showMessage('All provided image URLs were invalid. Gallery not updated.', isError: true);
+          }
+        }
+        break;
     }
   }
 
@@ -1818,6 +1981,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                         padding: _profileCardPadding,
                         profileImageBorderRadius: _profileImageBorderRadius,
                         profileImageSize: _profileImageSize,
+                        profileImageUrl: _profileImageUrl, // Pass the profile image URL
                         nameTextContent: _nameTextContent,
                         nameFontSize: _nameFontSize,
                         nameFontWeight: _nameFontWeight,

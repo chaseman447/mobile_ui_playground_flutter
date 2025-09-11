@@ -27,6 +27,20 @@ class ImageGalleryWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Determine the image URL to use for the current index, with a fallback.
+    String imageUrlToDisplay = 'https://placehold.co/150x150/cccccc/ffffff?text=Image+Error';
+
+    if (imageUrls.isNotEmpty && currentImageIndex >= 0 && currentImageIndex < imageUrls.length) {
+      final String potentialUrl = imageUrls[currentImageIndex];
+      // Defensive check for empty or invalid image URLs
+      if (potentialUrl.isNotEmpty && Uri.tryParse(potentialUrl)?.hasAbsolutePath == true) {
+        imageUrlToDisplay = potentialUrl;
+      }
+    }
+
+    // For debugging: print the URL being used right before Image.network
+    debugPrint('ImageGalleryWidget: Using URL: $imageUrlToDisplay');
+
     return Visibility(
       visible: isVisible,
       child: Padding(
@@ -44,43 +58,34 @@ class ImageGalleryWidget extends StatelessWidget {
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: 10),
-                  if (imageUrls.isNotEmpty)
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: ClipRRect(
-                        key: ValueKey(currentImageIndex),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          imageUrls[currentImageIndex],
-                          width: 200,
-                          height: 150,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 200,
-                              height: 150,
-                              color: Colors.grey[300],
-                              child: const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.broken_image, size: 40),
-                                  Text('Image Error', textAlign: TextAlign.center),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    )
-                  else
-                    Container(
-                      width: 200,
-                      height: 150,
-                      color: Colors.grey[300],
-                      child: const Center(
-                        child: Text('No Images Loaded', textAlign: TextAlign.center),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: ClipRRect(
+                      key: ValueKey(currentImageIndex),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        imageUrlToDisplay, // Using the defensively checked URL
+                        width: 200,
+                        height: 150,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          debugPrint('Error loading image gallery image: $error');
+                          return Container(
+                            width: 200,
+                            height: 150,
+                            color: Colors.grey[300],
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.broken_image, size: 40),
+                                Text('Image Error', textAlign: TextAlign.center),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                     ),
+                  ),
                   const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
