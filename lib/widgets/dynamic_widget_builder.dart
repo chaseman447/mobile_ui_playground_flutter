@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/color_parser.dart';
 import '../utils/alignment_parser.dart';
+import '../services/navigation_service.dart';
 
 class DynamicWidgetBuilder extends StatefulWidget {
   final Map<String, dynamic> widgetData;
@@ -46,6 +47,47 @@ class _DynamicWidgetBuilderState extends State<DynamicWidgetBuilder> {
     super.dispose();
   }
 
+  VoidCallback? _getButtonAction(Map<String, dynamic> properties) {
+    final NavigationService navigationService = NavigationService();
+    
+    // Check if there's a navigation action
+    if (properties.containsKey('navigationAction')) {
+      final String? navAction = properties['navigationAction'];
+      final String? navigationTarget = properties['navigationTarget'];
+      
+      return () {
+        switch (navAction) {
+          case 'home':
+            navigationService.navigateToScreen('/home');
+            break;
+          case 'settings':
+            navigationService.navigateToScreen('/settings');
+            break;
+          case 'about':
+            navigationService.navigateToScreen('/about');
+            break;
+          case 'layout-manager':
+            navigationService.navigateToLayoutManager();
+            break;
+          case 'navigate-to-layout':
+            if (navigationTarget != null) {
+              navigationService.navigateToLayoutByName(navigationTarget);
+            } else {
+              widget.showMessage('No layout specified');
+            }
+            break;
+          default:
+            widget.showMessage('Dynamic Button Pressed: ${properties['content'] ?? 'No Text'}');
+        }
+      };
+    }
+    
+    // Default action if no navigation
+    return () {
+      widget.showMessage('Dynamic Button Pressed: ${properties['content'] ?? 'No Text'}');
+    };
+  }
+
   // Helper to parse BoxFit from string
   BoxFit _parseBoxFit(String fitString) {
     switch (fitString.toLowerCase()) {
@@ -74,9 +116,7 @@ class _DynamicWidgetBuilderState extends State<DynamicWidgetBuilder> {
       switch (widgetType) {
         case 'dynamicButton':
           childWidget = ElevatedButton(
-            onPressed: () {
-              widget.showMessage('Dynamic Button Pressed: ${properties['content'] ?? 'No Text'}');
-            },
+            onPressed: _getButtonAction(properties),
             style: ElevatedButton.styleFrom(
               backgroundColor: parseHexColor(properties['backgroundColor'] ?? '0xFF2196F3'),
               foregroundColor: parseHexColor(properties['textColor'] ?? '0xFFFFFFFF'),

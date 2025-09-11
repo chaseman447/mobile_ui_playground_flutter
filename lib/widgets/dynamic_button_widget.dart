@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/color_parser.dart'; // Import the color parser utility
 import '../utils/alignment_parser.dart'; // Import alignment parsing utilities
+import '../services/navigation_service.dart'; // Import navigation service
 
 class DynamicButtonWidget extends StatelessWidget {
   final String buttonTextContent;
@@ -10,9 +11,12 @@ class DynamicButtonWidget extends StatelessWidget {
   final bool isVisible;
   final Alignment alignment;
   final double padding;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
+  final String? navigationAction;
+  final String? navigationTarget;
+  final NavigationService _navigationService = NavigationService();
 
-  const DynamicButtonWidget({
+  DynamicButtonWidget({
     super.key,
     required this.buttonTextContent,
     required this.buttonBackgroundColor,
@@ -21,7 +25,9 @@ class DynamicButtonWidget extends StatelessWidget {
     required this.isVisible,
     required this.alignment,
     required this.padding,
-    required this.onPressed,
+    this.onPressed,
+    this.navigationAction,
+    this.navigationTarget,
   });
 
   @override
@@ -35,7 +41,7 @@ class DynamicButtonWidget extends StatelessWidget {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             child: ElevatedButton(
-              onPressed: onPressed,
+              onPressed: _getButtonAction(),
               style: ElevatedButton.styleFrom(
                 backgroundColor: buttonBackgroundColor,
                 foregroundColor: buttonTextColor,
@@ -51,5 +57,31 @@ class DynamicButtonWidget extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  VoidCallback? _getButtonAction() {
+    if (onPressed != null) {
+      return onPressed;
+    }
+    
+    if (navigationAction != null && navigationTarget != null) {
+      return () {
+        switch (navigationAction) {
+          case 'navigateToScreen':
+            _navigationService.navigateToScreen(navigationTarget!);
+            break;
+          case 'navigateToLayout':
+            _navigationService.navigateToLayout(navigationTarget!);
+            break;
+          case 'openLayoutManager':
+            _navigationService.navigateToLayoutManager();
+            break;
+          default:
+            debugPrint('Unknown navigation action: $navigationAction');
+        }
+      };
+    }
+    
+    return null;
   }
 }

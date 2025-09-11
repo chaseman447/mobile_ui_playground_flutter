@@ -9,6 +9,11 @@ import 'dart:async'; // For Timer for image carousel
 import 'package:flutter/foundation.dart'; // For debugPrint
 import 'dart:math'; // For random numbers
 
+// Import navigation and layout management services
+import 'services/navigation_service.dart';
+import 'services/layout_manager.dart';
+import 'screens/layout_manager_screen.dart';
+
 // Import new components
 import 'widgets/profile_card.dart';
 import 'widgets/color_box_widget.dart';
@@ -37,13 +42,22 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
+      navigatorKey: NavigationService.navigatorKey,
       home: const MainNavigation(),
+      routes: {
+        '/home': (context) => const MainNavigation(),
+        '/layout-manager': (context) => const LayoutManagerScreen(),
+        '/settings': (context) => const MainNavigation(), // Navigate to settings tab
+        '/about': (context) => const MainNavigation(), // Navigate to about tab
+      },
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+  final Map<String, dynamic>? routeArguments;
+  
+  const MyHomePage({super.key, this.routeArguments});
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -171,6 +185,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
 
   final TextEditingController _commandController = TextEditingController();
   final LLMApiService _llmService = LLMApiService();
+  final NavigationService _navigationService = NavigationService();
+  final LayoutManager _layoutManager = LayoutManager();
 
   bool _isLoading = false;
   String _lastCommand = '';
@@ -204,6 +220,10 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     _saveInitialState();
     _initSharedPreferences();
     _startImageAutoPlayTimer();
+    _initializeLayoutManager();
+    
+    // Check for route arguments to auto-load preset
+    _checkRouteArguments();
   }
 
   @override
@@ -224,6 +244,110 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     } catch (e) {
       debugPrint('Error initializing SharedPreferences: $e');
       _showMessage('Error loading saved data', isError: true);
+    }
+  }
+
+  void _initializeLayoutManager() async {
+    await _layoutManager.initialize();
+  }
+
+  void _checkRouteArguments() {
+    if (widget.routeArguments != null) {
+      final String? presetToLoad = widget.routeArguments!['loadPreset'];
+      if (presetToLoad != null) {
+        // Delay the preset loading to ensure SharedPreferences is initialized
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _loadPreset(presetToLoad);
+        });
+      }
+    }
+  }
+
+  Future<void> _handleNavigationCommand(Map<String, dynamic> instruction) async {
+    final String action = instruction['action'] ?? '';
+    final Map<String, dynamic> parameters = instruction['parameters'] ?? {};
+    
+    try {
+      switch (action) {
+        case 'navigateToScreen':
+          final String screenName = parameters['screen'] ?? '';
+          _navigationService.navigateToScreen(screenName);
+          _showMessage('Navigated to $screenName');
+          break;
+        case 'navigateToLayout':
+           final String layoutName = parameters['layout'] ?? '';
+           if (layoutName.isNotEmpty) {
+             final layouts = _layoutManager.getAllLayouts();
+             final layout = layouts.firstWhere(
+               (l) => l.name.toLowerCase() == layoutName.toLowerCase(),
+               orElse: () => throw Exception('Layout not found'),
+             );
+             await _navigationService.navigateToLayout(layout.id);
+             _showMessage('Switched to layout: $layoutName');
+           }
+           break;
+        case 'openLayoutManager':
+          _navigationService.navigateToLayoutManager();
+          _showMessage('Opened layout manager');
+          break;
+        default:
+          _showMessage('Unknown navigation command: $action', isError: true);
+      }
+    } catch (e) {
+      debugPrint('Navigation command error: $e');
+      _showMessage('Error executing navigation: ${e.toString()}', isError: true);
+    }
+  }
+
+  Future<void> _handleLayoutCommand(Map<String, dynamic> instruction) async {
+    final String action = instruction['action'] ?? '';
+    final Map<String, dynamic> parameters = instruction['parameters'] ?? {};
+    
+    try {
+      switch (action) {
+        case 'saveLayout':
+          final String layoutName = parameters['name'] ?? 'Untitled Layout';
+          final currentState = _getCurrentUIState();
+          await _layoutManager.saveCurrentLayout(layoutName, currentState);
+          _showMessage('Layout "$layoutName" saved successfully!');
+          break;
+        case 'loadLayout':
+           final String layoutName = parameters['name'] ?? '';
+           if (layoutName.isNotEmpty) {
+             final layouts = _layoutManager.getAllLayouts();
+             try {
+               final layout = layouts.firstWhere(
+                 (l) => l.name.toLowerCase() == layoutName.toLowerCase(),
+               );
+               _applyUIState(layout.uiState);
+               await _layoutManager.setCurrentLayout(layout.id);
+               _showMessage('Layout "$layoutName" loaded successfully!');
+             } catch (e) {
+               _showMessage('Layout "$layoutName" not found', isError: true);
+             }
+           }
+           break;
+        case 'deleteLayout':
+           final String layoutName = parameters['name'] ?? '';
+           if (layoutName.isNotEmpty) {
+             final layouts = _layoutManager.getAllLayouts();
+             try {
+               final layout = layouts.firstWhere(
+                 (l) => l.name.toLowerCase() == layoutName.toLowerCase(),
+               );
+               await _layoutManager.deleteLayout(layout.id);
+               _showMessage('Layout "$layoutName" deleted successfully!');
+             } catch (e) {
+               _showMessage('Layout "$layoutName" not found', isError: true);
+             }
+           }
+           break;
+        default:
+          _showMessage('Unknown layout command: $action', isError: true);
+      }
+    } catch (e) {
+      debugPrint('Layout command error: $e');
+      _showMessage('Error executing layout command: ${e.toString()}', isError: true);
     }
   }
 
@@ -562,6 +686,12 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
               break;
             case 'reorderWidget':
               _handleReorderWidgetCommand(instruction);
+              break;
+            case 'navigation':
+              await _handleNavigationCommand(instruction);
+              break;
+            case 'layoutManagement':
+              await _handleLayoutCommand(instruction);
               break;
             default:
               await _handlePresetCommand(instruction);

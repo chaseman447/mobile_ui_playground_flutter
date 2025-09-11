@@ -6,8 +6,11 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Check for route arguments to handle preset loading
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    
     // For now, we'll use the existing MyHomePage as the home screen content
     // This maintains all existing functionality while adding navigation
-    return const MyHomePage();
+    return MyHomePage(routeArguments: args);
   }
 }

@@ -7,7 +7,7 @@ class LLMApiService {
   // Consider using environment variables, a secure backend proxy, or Flutter's build configurations
   // to manage sensitive keys. This is for demonstration purposes only.
   final String _apiKey =
-      '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'; // OpenRouter API Key
+      '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'; // OpenRouter API Key
   final String _apiBaseUrl =
       'https://openrouter.ai/api/v1'; // OpenRouter API base URL
   final String _model =
@@ -122,6 +122,16 @@ The UI consists of both *static* and *dynamic* elements.
 
 // Add Widget Examples (commandType: "addWidget")
 - "add a new dynamic button with text 'Dynamic Button' and red background": {"commandType": "addWidget", "widgetType": "dynamicButton", "properties": {"content": "Dynamic Button", "backgroundColor": "0xFFFF0000", "textColor": "0xFFFFFFFF", "borderRadius": 8.0}}
+- "add a blue button with text 'Click Me' at the center": {"commandType": "addWidget", "widgetType": "dynamicButton", "properties": {"content": "Click Me", "backgroundColor": "0xFF0000FF", "textColor": "0xFFFFFFFF", "borderRadius": 8.0, "alignment": "center"}}
+- "create a red button with rounded corners": {"commandType": "addWidget", "widgetType": "dynamicButton", "properties": {"content": "Button", "backgroundColor": "0xFFFF0000", "textColor": "0xFFFFFFFF", "borderRadius": 20.0}}
+- "make a small green button in the top-left corner": {"commandType": "addWidget", "widgetType": "dynamicButton", "properties": {"content": "Button", "backgroundColor": "0xFF00FF00", "textColor": "0xFFFFFFFF", "borderRadius": 8.0, "alignment": "topLeft", "padding": 8.0}}
+- "add a button that says 'Submit' with white text on blue background": {"commandType": "addWidget", "widgetType": "dynamicButton", "properties": {"content": "Submit", "backgroundColor": "0xFF0000FF", "textColor": "0xFFFFFFFF", "borderRadius": 8.0}}
+- "create a button that says 'Go to Settings' and navigates to settings screen": {"commandType": "addWidget", "widgetType": "dynamicButton", "properties": {"content": "Go to Settings", "backgroundColor": "0xFF2196F3", "textColor": "0xFFFFFFFF", "borderRadius": 8.0, "navigationAction": "settings"}}
+- "add a 'Home' button that goes to the home screen": {"commandType": "addWidget", "widgetType": "dynamicButton", "properties": {"content": "Home", "backgroundColor": "0xFF4CAF50", "textColor": "0xFFFFFFFF", "borderRadius": 8.0, "navigationAction": "home"}}
+- "make a button 'Switch Layout' that opens the layout manager": {"commandType": "addWidget", "widgetType": "dynamicButton", "properties": {"content": "Switch Layout", "backgroundColor": "0xFF9C27B0", "textColor": "0xFFFFFFFF", "borderRadius": 8.0, "navigationAction": "layout-manager"}}
+- "create a navigation button to go to about screen": {"commandType": "addWidget", "widgetType": "dynamicButton", "properties": {"content": "About", "backgroundColor": "0xFFFF9800", "textColor": "0xFFFFFFFF", "borderRadius": 8.0, "navigationAction": "about"}}
+- "add a button to load Profile Layout": {"commandType": "addWidget", "widgetType": "dynamicButton", "properties": {"content": "Load Profile Layout", "backgroundColor": "0xFFFF5722", "textColor": "0xFFFFFFFF", "borderRadius": 12.0, "navigationAction": "navigate-to-layout", "navigationTarget": "Profile Layout"}}
+- "create a Dashboard View button": {"commandType": "addWidget", "widgetType": "dynamicButton", "properties": {"content": "Dashboard View", "backgroundColor": "0xFF607D8B", "textColor": "0xFFFFFFFF", "borderRadius": 6.0, "navigationAction": "navigate-to-layout", "navigationTarget": "Dashboard"}}
 - "add a small blue box": {"commandType": "addWidget", "widgetType": "colorBox", "properties": {"size": 30.0, "backgroundColor": "0xFF0000FF"}}
 - "add a text label saying 'Hello World' with font size 20": {"commandType": "addWidget", "widgetType": "text", "properties": {"content": "Hello World", "fontSize": 20.0, "textColor": "0xFF000000", "textAlign": "center"}}
 - "add a text field with initial text 'Type here' and red border": {"commandType": "addWidget", "widgetType": "textField", "properties": {"initialText": "Type here", "hintText": "Enter text", "borderColor": "0xFFFF0000", "borderRadius": 12.0, "fontSize": 18.0, "textColor": "0xFF333333", "focusedBorderColor": "0xFF0000FF"}}
@@ -141,6 +151,23 @@ The UI consists of both *static* and *dynamic* elements.
 - "change the text field's initial text to 'New Value'": {"component": "textField", "property": "initialText", "value": "New Value", "targetIndex": 1}
 - "change the text of a dynamic button to 'Hello'": {"component": "dynamicButton", "property": "content", "value": "Hello", "targetIndex": 1} // Assumes first dynamic button if no index specified
 - "make the first dynamic button blue": {"component": "dynamicButton", "property": "backgroundColor", "value": "0xFF0000FF", "targetIndex": 1}
+
+// Navigation Commands (commandType: "navigation")
+- "go to settings": {"commandType": "navigation", "action": "navigate_to_screen", "screen": "settings"}
+- "navigate to about page": {"commandType": "navigation", "action": "navigate_to_screen", "screen": "about"}
+- "go to home": {"commandType": "navigation", "action": "navigate_to_screen", "screen": "home"}
+- "show layout manager": {"commandType": "navigation", "action": "navigate_to_screen", "screen": "layout-manager"}
+- "go back": {"commandType": "navigation", "action": "go_back"}
+- "show layout selection": {"commandType": "navigation", "action": "show_layout_selection"}
+- "switch to layout 'My Design'": {"commandType": "navigation", "action": "navigate_to_layout", "layoutName": "My Design"}
+- "save this layout as 'New Design'": {"commandType": "navigation", "action": "save_current_layout", "layoutName": "New Design"}
+
+// Layout Management Commands (commandType: "layoutManagement")
+- "save current layout as 'My Design'": {"commandType": "layoutManagement", "action": "save_layout", "layoutName": "My Design"}
+- "load layout 'My Design'": {"commandType": "layoutManagement", "action": "load_layout", "layoutName": "My Design"}
+- "delete layout 'Old Design'": {"commandType": "layoutManagement", "action": "delete_layout", "layoutName": "Old Design"}
+- "rename layout 'Old Name' to 'New Name'": {"commandType": "layoutManagement", "action": "rename_layout", "oldName": "Old Name", "newName": "New Name"}
+- "duplicate layout 'Original' as 'Copy'": {"commandType": "layoutManagement", "action": "duplicate_layout", "sourceName": "Original", "newName": "Copy"}
 - "increase the size of the second color box by 10": {"component": "colorBox", "property": "size", "operation": "add", "value": 10.0, "targetIndex": 2}
 - "align the first dynamic button to the bottom left": {"component": "dynamicButton", "property": "alignment", "value": "bottomLeft", "targetIndex": 1}
 - "center the second dynamic text": {"component": "text", "property": "alignment", "value": "center", "targetIndex": 2}
