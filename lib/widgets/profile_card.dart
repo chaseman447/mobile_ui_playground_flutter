@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../utils/color_parser.dart'; // Import the color parser utility
 import '../utils/alignment_parser.dart'; // Import alignment parsing utilities
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class ProfileCard extends StatelessWidget {
   final Color backgroundColor;
@@ -12,6 +14,7 @@ class ProfileCard extends StatelessWidget {
   final double profileImageBorderRadius;
   final double profileImageSize;
   final String? profileImageUrl; // Added: Optional URL for profile image
+  final VoidCallback? onImageTap; // Callback for when image is tapped
 
   final String nameTextContent;
   final double nameFontSize;
@@ -50,6 +53,7 @@ class ProfileCard extends StatelessWidget {
     required this.profileImageBorderRadius,
     required this.profileImageSize,
     this.profileImageUrl, // Updated: Made optional
+    this.onImageTap, // Added callback for image tap
     required this.nameTextContent,
     required this.nameFontSize,
     required this.nameFontWeight,
@@ -114,25 +118,49 @@ class ProfileCard extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Hero(
-                        tag: 'profile_image',
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(profileImageBorderRadius),
-                          child: Image.network(
-                            imageUrlToUse, // Using the defensively checked URL
-                            width: profileImageSize,
-                            height: profileImageSize,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              debugPrint('Error loading profile image: $error');
-                              return Container(
-                                width: profileImageSize,
-                                height: profileImageSize,
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.person, size: 50),
-                              );
-                            },
-                          ),
+                      GestureDetector(
+                        onTap: onImageTap,
+                        child: Stack(
+                          children: [
+                            Hero(
+                              tag: 'profile_image',
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(profileImageBorderRadius),
+                                child: Image.network(
+                                  imageUrlToUse, // Using the defensively checked URL
+                                  width: profileImageSize,
+                                  height: profileImageSize,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    debugPrint('Error loading profile image: $error');
+                                    return Container(
+                                      width: profileImageSize,
+                                      height: profileImageSize,
+                                      color: Colors.grey[300],
+                                      child: const Icon(Icons.person, size: 50),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            if (onImageTap != null)
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 10),

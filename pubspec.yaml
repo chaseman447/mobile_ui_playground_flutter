@@ -36,6 +36,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.2.1 # Add this line for general HTTP requests
   shared_preferences: ^2.2.3 # Add this line
+  supabase_flutter: ^2.5.6 # Supabase client for Flutter
+  crypto: ^3.0.3 # For password hashing
+  image_picker: ^1.0.4 # For selecting images from gallery or camera
 
 dev_dependencies:
   flutter_test:

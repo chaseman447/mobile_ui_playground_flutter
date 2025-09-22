@@ -7,11 +7,11 @@ class LLMApiService {
   // Consider using environment variables, a secure backend proxy, or Flutter's build configurations
   // to manage sensitive keys. This is for demonstration purposes only.
   final String _apiKey =
-      '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'; // OpenRouter API Key
+      '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'; // OpenRouter API Key
   final String _apiBaseUrl =
       'https://openrouter.ai/api/v1'; // OpenRouter API base URL
   final String _model =
-      'qwen/qwen3-coder:free'; // OpenRouter model name
+      'mistralai/devstral-small-2505:free'; // OpenRouter model name
 
   Future<Map<String, dynamic>?> generateStructuredOutput(
       String userCommand,
@@ -30,7 +30,7 @@ The UI consists of both *static* and *dynamic* elements.
 
 *Static Modifiable Elements*:
 - profileCard: backgroundColor (hex string like "0xFFRRGGBB"), borderRadius (double), isVisible (boolean: true/false), alignment (string: "topLeft", "topCenter", "topRight", "centerLeft", "center", "centerRight", "bottomLeft", "bottomCenter", "bottomRight"), padding (double)
-- profileImage: borderRadius (double), size (double for width/height) // Note: ProfileImage visibility is controlled by profileCard's isVisible
+- profileImage: borderRadius (double), size (double for width/height), profileImageUrl (string URL) // Note: ProfileImage visibility is controlled by profileCard's isVisible
 - nameText: content (string), fontSize (double), fontWeight (string: "bold" or "normal"), textColor (hex string like "0xFFRRGGBB"), textAlign (string: "left", "center", "right", "justify", "start", "end"), isVisible (boolean: true/false), alignment (string), padding (double)
 - titleText: content (string), fontSize (double), textColor (hex string like "0xFFRRGGBB"), isVisible (boolean: true/false), textAlign (string), alignment (string), padding (double)
 - bioText: content (string), fontSize (double), textColor (hex string like "0xFFRRGGBB"), textAlign (string), isVisible (boolean: true/false), alignment (string), padding (double)
@@ -61,6 +61,7 @@ The UI consists of both *static* and *dynamic* elements.
 
 // Static UI Modification Examples
 - "make picture square": {"component": "profileImage", "property": "borderRadius", "value": 0.0}
+- "change profile image to https://example.com/image.jpg": {"component": "profileImage", "property": "profileImageUrl", "value": "https://example.com/image.jpg"}
 - "change card background to lightblue": {"component": "profileCard", "property": "backgroundColor", "value": "0xFFADD8E6"}
 - "increase name font size": {"component": "nameText", "property": "fontSize", "operation": "add", "value": 4.0}
 - "hide title": {"component": "titleText", "property": "isVisible", "value": false}

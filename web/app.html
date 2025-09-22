@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile UI Playground - Web Version</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="favicon.png"/>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>Mobile UI Playground</h1>
+            <div class="header-controls">
+                <button id="resetBtn" class="control-btn">Reset</button>
+                <button id="presetBtn" class="control-btn">Presets</button>
+                <button id="saveLayoutBtn" class="control-btn">Save Layout</button>
+                <button id="blankScreenBtn" class="control-btn">Blank Screen</button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Component Palette Sidebar -->
+            <aside class="component-palette">
+                <h3>Components</h3>
+                <div class="palette-section">
+                    <h4>Basic</h4>
+                    <div class="palette-item" draggable="true" data-component="button">
+                        <div class="component-preview">
+                            <button class="preview-btn">Button</button>
+                        </div>
+                        <span>Button</span>
+                    </div>
+                    <div class="palette-item" draggable="true" data-component="text">
+                        <div class="component-preview">
+                            <span class="preview-text">Text</span>
+                        </div>
+                        <span>Text</span>
+                    </div>
+                    <div class="palette-item" draggable="true" data-component="image">
+                        <div class="component-preview">
+                            <div class="preview-image">🖼️</div>
+                        </div>
+                        <span>Image</span>
+                    </div>
+                    <div class="palette-item" draggable="true" data-component="container">
+                        <div class="component-preview">
+                            <div class="preview-container"></div>
+                        </div>
+                        <span>Container</span>
+                    </div>
+                </div>
+                <div class="palette-section">
+                    <h4>Input</h4>
+                    <div class="palette-item" draggable="true" data-component="textfield">
+                        <div class="component-preview">
+                            <input class="preview-input" placeholder="Text Field" readonly>
+                        </div>
+                        <span>Text Field</span>
+                    </div>
+                    <div class="palette-item" draggable="true" data-component="switch">
+                        <div class="component-preview">
+                            <div class="preview-switch"></div>
+                        </div>
+                        <span>Switch</span>
+                    </div>
+                    <div class="palette-item" draggable="true" data-component="slider">
+                        <div class="component-preview">
+                            <div class="preview-slider"></div>
+                        </div>
+                        <span>Slider</span>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Design Canvas -->
+            <div class="design-canvas-container">
+                <div class="canvas-toolbar">
+                    <button id="canvasResetBtn" class="toolbar-btn">Clear Canvas</button>
+                    <button id="canvasUndoBtn" class="toolbar-btn">Undo</button>
+                    <button id="canvasRedoBtn" class="toolbar-btn">Redo</button>
+                </div>
+                <div class="emulator-container">
+                    <div class="emulator-frame">
+                        <div id="designCanvas" class="emulator-screen design-canvas">
+                        <!-- Profile Card -->
+                        <div id="profileCard" class="profile-card">
+                            <div id="profileImage" class="profile-image">
+                                <img src="https://picsum.photos/150?random=4" alt="Profile" />
+                            </div>
+                            <div class="profile-info">
+                                <h2 id="nameText" class="profile-name">Jane Doe</h2>
+                                <p id="titleText" class="profile-title">Lead Product Designer</p>
+                                <p id="bioText" class="profile-bio">Innovating user experiences with a keen eye for detail and a passion for human-centered design.</p>
+                            </div>
+                        </div>
+
+                        <!-- Interactive Components -->
+                        <div class="components-container">
+                            <!-- Color Box -->
+                            <div id="colorBox" class="color-box"></div>
+                            
+                            <!-- Button -->
+                            <button id="mainActionButton" class="action-button">Apply Changes</button>
+                            
+                            <!-- Switch -->
+                            <div class="switch-container">
+                                <label class="switch">
+                                    <input type="checkbox" id="toggleSwitch" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            
+                            <!-- Slider -->
+                            <div class="slider-container">
+                                <input type="range" id="valueSlider" min="0" max="1" step="0.01" value="0.5" class="range-slider">
+                            </div>
+                            
+                            <!-- Progress Indicator -->
+                            <div class="progress-container">
+                                <div class="progress-bar">
+                                    <div id="progressIndicator" class="progress-fill"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Image Gallery -->
+                            <div id="imageGallery" class="image-gallery">
+                                <div class="gallery-container">
+                                    <img id="galleryImage" src="https://picsum.photos/150/150?random=1" alt="Gallery" />
+                                    <div class="gallery-controls">
+                                        <button id="prevImage" class="gallery-btn">‹</button>
+                                        <button id="nextImage" class="gallery-btn">›</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Static Text Field -->
+                            <div class="text-field-container">
+                                <input type="text" id="staticTextField" value="Hello, Flutter!" class="static-text-field" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Properties Panel -->
+            <aside class="properties-panel">
+                <h3>Properties</h3>
+                <div id="propertiesContent" class="properties-content">
+                    <div class="no-selection">
+                        <p>Select a component to edit its properties</p>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Chat Input Bar -->
+        <div class="chat-input-container">
+            <div class="chat-input-wrapper">
+                <input type="text" id="commandInput" placeholder="Enter command to modify UI (e.g., 'change profile name to John')" class="chat-input">
+                <button id="sendCommand" class="send-button">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="currentColor"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+                <div class="spinner"></div>
+                <span>Processing command...</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

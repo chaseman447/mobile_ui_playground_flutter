@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'navigation/main_navigation.dart';
+import 'services/supabase_service.dart';
+import 'screens/auth_screen.dart';
 
 // Keep existing imports for backward compatibility
 import 'package:mobile_ui_playground_flutter/llm_api_service.dart'; // Import your LLM service
@@ -8,6 +10,8 @@ import 'dart:convert'; // For json.encode and json.decode
 import 'dart:async'; // For Timer for image carousel
 import 'package:flutter/foundation.dart'; // For debugPrint
 import 'dart:math'; // For random numbers
+import 'package:image_picker/image_picker.dart'; // For image selection
+import 'dart:io'; // For File handling
 
 // Import navigation and layout management services
 import 'services/navigation_service.dart';
@@ -27,7 +31,17 @@ import 'widgets/dynamic_widget_builder.dart'; // New: For dynamic widgets
 import 'utils/color_parser.dart' as color_parser; // For parseHexColor - Added 'as color_parser'
 import 'utils/alignment_parser.dart'; // New: For alignment parsing (parseAlignment, parseMainAxisAlignment, parseCrossAxisAlignment, and parseTextAlign)
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Supabase
+  try {
+    await SupabaseService.initialize();
+  } catch (e) {
+    debugPrint('Failed to initialize Supabase: $e');
+    // Continue without Supabase for development
+  }
+  
   runApp(const MyApp());
 }
 
@@ -43,7 +57,7 @@ class MyApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       navigatorKey: NavigationService.navigatorKey,
-      home: const MainNavigation(),
+      home: const AuthWrapper(),
       routes: {
         '/home': (context) => const MainNavigation(),
         '/layout-manager': (context) => const LayoutManagerScreen(),
@@ -51,6 +65,46 @@ class MyApp extends StatelessWidget {
         '/about': (context) => const MainNavigation(), // Navigate to about tab
       },
     );
+  }
+}
+
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthState();
+  }
+
+  void _checkAuthState() {
+    // Listen to auth state changes
+    SupabaseService.instance.authStateChanges.listen((authState) {
+      if (mounted) {
+        setState(() {
+          // This will trigger a rebuild when auth state changes
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final supabaseService = SupabaseService.instance;
+    
+    // For development, allow bypassing authentication
+    // In production, you might want to enforce authentication
+    return const MainNavigation();
+    
+    // Uncomment below to enforce authentication:
+    // return supabaseService.isAuthenticated 
+    //     ? const MainNavigation()
+    //     : const AuthScreen();
   }
 }
 
@@ -1257,6 +1311,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       try {
         switch (component) {
           case 'profileCard':
+          case 'profileImage':
             _handleProfileCardInstruction(property, value, operation);
             break;
           case 'nameText':
@@ -1872,6 +1927,59 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     );
   }
 
+  Future<void> _pickProfileImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      
+      // Show options to pick from gallery or camera
+      final ImageSource? source = await showDialog<ImageSource>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Select Image Source'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.photo_library),
+                  title: const Text('Gallery'),
+                  onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.camera_alt),
+                  title: const Text('Camera'),
+                  onTap: () => Navigator.of(context).pop(ImageSource.camera),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+
+      if (source != null) {
+        final XFile? image = await picker.pickImage(
+          source: source,
+          maxWidth: 800,
+          maxHeight: 800,
+          imageQuality: 85,
+        );
+
+        if (image != null) {
+          // For now, we'll use a placeholder since we can't directly use local files in Image.network
+          // In a real app, you'd upload this to a server or use Image.file
+          setState(() {
+            // Generate a random image URL as a demo since we can't use local files with Image.network
+            final random = DateTime.now().millisecondsSinceEpoch;
+            _profileImageUrl = 'https://picsum.photos/150?random=$random';
+          });
+          _showMessage('Profile image updated! (Demo: using random image)');
+        }
+      }
+    } catch (e) {
+      _showMessage('Error selecting image: $e', isError: true);
+    }
+  }
+
   void _showSavePresetDialog() {
     final TextEditingController presetNameController = TextEditingController();
     showDialog(
@@ -2112,6 +2220,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
                         profileImageBorderRadius: _profileImageBorderRadius,
                         profileImageSize: _profileImageSize,
                         profileImageUrl: _profileImageUrl, // Pass the profile image URL
+                        onImageTap: _pickProfileImage, // Add image tap callback
                         nameTextContent: _nameTextContent,
                         nameFontSize: _nameFontSize,
                         nameFontWeight: _nameFontWeight,

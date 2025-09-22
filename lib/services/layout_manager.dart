@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'supabase_service.dart';
 
 class LayoutManager {
   static const String _layoutsKey = 'saved_layouts';
@@ -60,24 +61,38 @@ class LayoutManager {
     _layouts[layoutId] = layout;
     await _saveLayouts();
     
+    // Also save to Supabase if authenticated
+    await _saveToSupabase(layout);
+    
     debugPrint('Layout saved: $name (ID: $layoutId)');
     return layoutId;
   }
   
   Future<void> updateLayout(String layoutId, Map<String, dynamic> uiState) async {
     if (_layouts.containsKey(layoutId)) {
-      _layouts[layoutId] = _layouts[layoutId]!.copyWith(
+      final updatedLayout = _layouts[layoutId]!.copyWith(
         uiState: uiState,
         updatedAt: DateTime.now(),
       );
+      _layouts[layoutId] = updatedLayout;
       await _saveLayouts();
+      
+      // Also update in Supabase if authenticated
+      await _updateInSupabase(updatedLayout);
+      
       debugPrint('Layout updated: $layoutId');
     }
   }
   
   Future<void> deleteLayout(String layoutId) async {
+    final layout = _layouts[layoutId];
     _layouts.remove(layoutId);
     await _saveLayouts();
+    
+    // Also delete from Supabase if authenticated
+    if (layout != null) {
+      await _deleteFromSupabase(layout);
+    }
     
     if (_currentLayoutId == layoutId) {
       _currentLayoutId = null;
@@ -131,6 +146,75 @@ class LayoutManager {
       return await saveCurrentLayout(newName, originalLayout.uiState);
     }
     throw Exception('Layout not found: $layoutId');
+  }
+  
+  // Supabase integration methods
+  Future<void> _saveToSupabase(LayoutConfig layout) async {
+    try {
+      final supabaseService = SupabaseService.instance;
+      if (supabaseService.isAuthenticated) {
+        await supabaseService.saveLayout(layout.name, layout.uiState);
+        debugPrint('Layout synced to Supabase: ${layout.name}');
+      }
+    } catch (e) {
+      debugPrint('Failed to sync layout to Supabase: $e');
+      // Don't throw error - local save should still work
+    }
+  }
+  
+  Future<void> _updateInSupabase(LayoutConfig layout) async {
+    try {
+      final supabaseService = SupabaseService.instance;
+      if (supabaseService.isAuthenticated) {
+        // For now, we'll save as new since we don't have the Supabase ID
+        // In a full implementation, you'd store the Supabase ID in LayoutConfig
+        await supabaseService.saveLayout(layout.name, layout.uiState);
+        debugPrint('Layout updated in Supabase: ${layout.name}');
+      }
+    } catch (e) {
+      debugPrint('Failed to update layout in Supabase: $e');
+    }
+  }
+  
+  Future<void> _deleteFromSupabase(LayoutConfig layout) async {
+    try {
+      final supabaseService = SupabaseService.instance;
+      if (supabaseService.isAuthenticated) {
+        // For now, we can't delete from Supabase without the database ID
+        // In a full implementation, you'd store the Supabase ID in LayoutConfig
+        debugPrint('Layout deletion from Supabase not implemented yet: ${layout.name}');
+      }
+    } catch (e) {
+      debugPrint('Failed to delete layout from Supabase: $e');
+    }
+  }
+  
+  // Sync layouts from Supabase
+  Future<void> syncFromSupabase() async {
+    try {
+      final supabaseService = SupabaseService.instance;
+      if (supabaseService.isAuthenticated) {
+        final supabaseLayouts = await supabaseService.getUserLayouts();
+        
+        for (final supabaseLayout in supabaseLayouts) {
+          final layoutId = supabaseLayout['id'].toString();
+          final layout = LayoutConfig(
+            id: layoutId,
+            name: supabaseLayout['name'],
+            uiState: Map<String, dynamic>.from(supabaseLayout['layout_data']),
+            createdAt: DateTime.parse(supabaseLayout['created_at']),
+            updatedAt: DateTime.parse(supabaseLayout['updated_at']),
+          );
+          
+          _layouts[layoutId] = layout;
+        }
+        
+        await _saveLayouts();
+        debugPrint('Synced ${supabaseLayouts.length} layouts from Supabase');
+      }
+    } catch (e) {
+      debugPrint('Failed to sync layouts from Supabase: $e');
+    }
   }
 }
 
