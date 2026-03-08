@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 import 'navigation/main_navigation.dart';
 import 'services/supabase_service.dart';
-import 'screens/auth_screen.dart';
 
 // Keep existing imports for backward compatibility
-import 'package:mobile_ui_playground_flutter/llm_api_service.dart'; // Import your LLM service
+import "package:mobile_ui_playground_flutter/services/puter_service.dart"; // Import Puter.js service'; // Import your LLM service
 import 'package:shared_preferences/shared_preferences.dart'; // Import shared_preferences
 import 'dart:convert'; // For json.encode and json.decode
 import 'dart:async'; // For Timer for image carousel
-import 'package:flutter/foundation.dart'; // For debugPrint
 import 'dart:math'; // For random numbers
 import 'package:image_picker/image_picker.dart'; // For image selection
-import 'dart:io'; // For File handling
 
 // Import navigation and layout management services
 import 'services/navigation_service.dart';
@@ -236,9 +233,10 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   late Map<String, dynamic> _initialState;
   late SharedPreferences _prefs;
   Map<String, Map<String, dynamic>> _savedPresets = {};
+  Map<String, Map<String, dynamic>> _savedWidgets = {};
 
   final TextEditingController _commandController = TextEditingController();
-  final LLMApiService _llmService = LLMApiService();
+  final PuterService _puterService = PuterService();
   final NavigationService _navigationService = NavigationService();
   final LayoutManager _layoutManager = LayoutManager();
 
@@ -275,6 +273,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     _initSharedPreferences();
     _startImageAutoPlayTimer();
     _initializeLayoutManager();
+    PuterService.initialize();
     
     // Check for route arguments to auto-load preset
     _checkRouteArguments();
@@ -294,6 +293,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     try {
       _prefs = await SharedPreferences.getInstance();
       _loadAllPresets();
+      _loadAllSavedWidgets();
       _loadCommandHistory();
     } catch (e) {
       debugPrint('Error initializing SharedPreferences: $e');
@@ -675,6 +675,260 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     });
   }
 
+  void _loadAllSavedWidgets() {
+    if (!mounted) return;
+
+    setState(() {
+      _savedWidgets.clear();
+      try {
+        for (String key in _prefs.getKeys()) {
+          if (key.startsWith('saved_widget_')) {
+            final widgetName = key.substring(13);
+            final String? widgetJson = _prefs.getString(key);
+            if (widgetJson != null) {
+              _savedWidgets[widgetName] = json.decode(widgetJson);
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error loading saved widgets: $e');
+      }
+    });
+  }
+
+  Future<void> _saveWidgetRecord(String widgetName, Map<String, dynamic> record) async {
+    if (widgetName.trim().isEmpty) {
+      _showMessage('Widget name cannot be empty', isError: true);
+      return;
+    }
+
+    try {
+      await _prefs.setString('saved_widget_$widgetName', json.encode(record));
+      _loadAllSavedWidgets();
+      _showMessage('Widget "$widgetName" saved successfully!');
+    } catch (e) {
+      debugPrint('Error saving widget: $e');
+      _showMessage('Error saving widget', isError: true);
+    }
+  }
+
+  Future<void> _saveDynamicWidgetInstance(String widgetName, Map<String, dynamic> widgetData) async {
+    final record = {
+      'kind': 'dynamic',
+      'widgetType': widgetData['widgetType'],
+      'properties': widgetData['properties'],
+    };
+    await _saveWidgetRecord(widgetName, record);
+  }
+
+  Future<void> _saveStaticWidgetSnapshot(String widgetName, String component) async {
+    final snapshot = _buildStaticWidgetSnapshot(component);
+    if (snapshot == null) {
+      _showMessage('Static widget "$component" cannot be saved', isError: true);
+      return;
+    }
+    final record = {
+      'kind': 'static',
+      'component': component,
+      'properties': snapshot,
+    };
+    await _saveWidgetRecord(widgetName, record);
+  }
+
+  Future<void> _deleteSavedWidget(String widgetName) async {
+    try {
+      await _prefs.remove('saved_widget_$widgetName');
+      _loadAllSavedWidgets();
+      _showMessage('Widget "$widgetName" deleted');
+    } catch (e) {
+      debugPrint('Error deleting widget: $e');
+      _showMessage('Error deleting widget', isError: true);
+    }
+  }
+
+  String _colorToHexString(Color color) {
+    return '0x${color.value.toRadixString(16).padLeft(8, '0')}';
+  }
+
+  Map<String, dynamic>? _buildStaticWidgetSnapshot(String component) {
+    switch (component) {
+      case 'profileCard':
+        return {
+          'backgroundColor': _colorToHexString(_profileCardBackgroundColor),
+          'borderRadius': _profileCardBorderRadius,
+          'isVisible': _isProfileCardVisible,
+          'alignment': _profileCardAlignment.toString().split('.').last,
+          'padding': _profileCardPadding,
+          'profileImageBorderRadius': _profileImageBorderRadius,
+          'profileImageSize': _profileImageSize,
+          'profileImageUrl': _profileImageUrl,
+        };
+      case 'profileImage':
+        return {
+          'profileImageBorderRadius': _profileImageBorderRadius,
+          'profileImageSize': _profileImageSize,
+          'profileImageUrl': _profileImageUrl,
+        };
+      case 'nameText':
+        return {
+          'fontSize': _nameFontSize,
+          'fontWeight': _nameFontWeight == FontWeight.bold ? 'bold' : 'normal',
+          'textColor': _colorToHexString(_nameTextColor),
+          'content': _nameTextContent,
+          'textAlign': _nameTextAlign.toString().split('.').last,
+          'isVisible': _isNameTextVisible,
+          'alignment': _nameTextAlignment.toString().split('.').last,
+          'padding': _nameTextPadding,
+        };
+      case 'titleText':
+        return {
+          'fontSize': _titleFontSize,
+          'textColor': _colorToHexString(_titleTextColor),
+          'content': _titleTextContent,
+          'textAlign': _titleTextAlign.toString().split('.').last,
+          'isVisible': _isTitleVisible,
+          'alignment': _titleTextAlignment.toString().split('.').last,
+          'padding': _titleTextPadding,
+        };
+      case 'bioText':
+        return {
+          'fontSize': _bioFontSize,
+          'textColor': _colorToHexString(_bioTextColor),
+          'content': _bioTextContent,
+          'textAlign': _bioTextAlign.toString().split('.').last,
+          'isVisible': _isBioTextVisible,
+          'alignment': _bioTextAlignment.toString().split('.').last,
+          'padding': _bioTextPadding,
+        };
+      case 'colorBox':
+        return {
+          'backgroundColor': _colorToHexString(_colorBoxBackgroundColor),
+          'size': _colorBoxSize,
+          'isVisible': _isColorBoxVisible,
+          'alignment': _colorBoxAlignment.toString().split('.').last,
+          'padding': _colorBoxPadding,
+        };
+      case 'mainActionButton':
+        return {
+          'content': _buttonTextContent,
+          'backgroundColor': _colorToHexString(_buttonBackgroundColor),
+          'textColor': _colorToHexString(_buttonTextColor),
+          'borderRadius': _buttonBorderRadius,
+          'isVisible': _isMainActionButtonVisible,
+          'alignment': _mainActionButtonAlignment.toString().split('.').last,
+          'padding': _mainActionButtonPadding,
+        };
+      case 'toggleSwitch':
+        return {
+          'activeColor': _colorToHexString(_switchActiveColor),
+          'inactiveThumbColor': _colorToHexString(_switchInactiveThumbColor),
+          'value': _switchValue,
+          'isVisible': _isToggleSwitchVisible,
+          'alignment': _toggleSwitchAlignment.toString().split('.').last,
+          'padding': _toggleSwitchPadding,
+        };
+      case 'slider':
+        return {
+          'value': _sliderValue,
+          'min': _sliderMin,
+          'max': _sliderMax,
+          'activeColor': _colorToHexString(_sliderActiveColor),
+          'inactiveColor': _colorToHexString(_sliderInactiveColor),
+          'isVisible': _isSliderVisible,
+          'alignment': _sliderAlignment.toString().split('.').last,
+          'padding': _sliderPadding,
+        };
+      case 'progressIndicator':
+        return {
+          'value': _progressValue,
+          'color': _colorToHexString(_progressColor),
+          'backgroundColor': _colorToHexString(_progressBackgroundColor),
+          'isVisible': _isProgressIndicatorVisible,
+          'alignment': _progressIndicatorAlignment.toString().split('.').last,
+          'padding': _progressIndicatorPadding,
+        };
+      case 'imageGallery':
+        return {
+          'currentImageIndex': _currentImageIndex,
+          'autoPlay': _imageAutoPlay,
+          'isVisible': _isImageGalleryVisible,
+          'alignment': _imageGalleryAlignment.toString().split('.').last,
+          'padding': _imageGalleryPadding,
+          'imageUrls': List<String>.from(_imageUrls),
+        };
+      case 'mainColumn':
+        return {
+          'mainAxisAlignment': _mainColumnAlignment.toString().split('.').last,
+          'crossAxisAlignment': _mainColumnCrossAlignment.toString().split('.').last,
+          'padding': _mainColumnPadding,
+          'backgroundColor': _colorToHexString(_mainColumnBackgroundColor),
+        };
+      case 'staticTextField':
+        return {
+          'content': _staticTextFieldContent,
+          'isVisible': _isStaticTextFieldVisible,
+          'alignment': _staticTextFieldAlignment.toString().split('.').last,
+          'padding': _staticTextFieldPadding,
+        };
+      default:
+        return null;
+    }
+  }
+
+  void _applyStaticWidgetSnapshot(String component, Map<String, dynamic> properties) {
+    final String normalizedComponent = _normalizeStaticComponentName(component);
+    if (!_isStaticComponentName(normalizedComponent) && normalizedComponent != 'profileImage') {
+      _showMessage('Saved widget "$component" is invalid', isError: true);
+      return;
+    }
+
+    setState(() {
+      for (final entry in properties.entries) {
+        final property = _normalizePropertyName(normalizedComponent, entry.key);
+        final value = entry.value;
+        switch (normalizedComponent) {
+          case 'profileCard':
+          case 'profileImage':
+            _handleProfileCardInstruction(property, value, null);
+            break;
+          case 'nameText':
+            _handleNameTextInstruction(property, value, null);
+            break;
+          case 'titleText':
+            _handleTitleTextInstruction(property, value, null);
+            break;
+          case 'bioText':
+            _handleBioTextInstruction(property, value, null);
+            break;
+          case 'colorBox':
+            _handleColorBoxInstruction(property, value, null);
+            break;
+          case 'mainActionButton':
+            _handleButtonInstruction(property, value, null);
+            break;
+          case 'toggleSwitch':
+            _handleSwitchInstruction(property, value, null);
+            break;
+          case 'slider':
+            _handleSliderInstruction(property, value, null);
+            break;
+          case 'progressIndicator':
+            _handleProgressInstruction(property, value, null);
+            break;
+          case 'imageGallery':
+            _handleImageGalleryInstruction(property, value, null);
+            break;
+          case 'mainColumn':
+            _handleMainColumnInstruction(property, value, null);
+            break;
+          case 'staticTextField':
+            _handleStaticTextFieldInstruction(property, value, null);
+            break;
+        }
+      }
+    });
+  }
+
   void _resetUI() {
     _applyUIState(_initialState);
     _commandController.clear();
@@ -698,27 +952,36 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _handleCommand() async {
-    final command = _commandController.text.trim();
-    if (command.isEmpty) {
+    await _processCommand(_commandController.text);
+  }
+
+  Future<void> _processCommand(
+    String command, {
+    bool clearInput = true,
+    bool saveHistory = true,
+  }) async {
+    final trimmedCommand = command.trim();
+    if (trimmedCommand.isEmpty) {
       _showMessage('Please enter a command', isError: true);
       return;
     }
 
-    if (!_commandHistory.contains(command)) {
-      _commandHistory.insert(0, command);
+    if (saveHistory && !_commandHistory.contains(trimmedCommand)) {
+      _commandHistory.insert(0, trimmedCommand);
       if (_commandHistory.length > 50) {
         _commandHistory = _commandHistory.take(50).toList();
       }
       _saveCommandHistory();
     }
 
-    _lastCommand = command;
+    _lastCommand = trimmedCommand;
     _historyIndex = -1;
 
-    if (command.toLowerCase() == 'reset ui') {
+    final normalizedCommand = trimmedCommand.toLowerCase();
+    if (normalizedCommand == 'reset ui') {
       _resetUI();
       return;
-    } else if (command.toLowerCase() == 'make screen blank') {
+    } else if (normalizedCommand == 'make screen blank') {
       _makeScreenBlank();
       return;
     }
@@ -726,48 +989,521 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     setState(() => _isLoading = true);
 
     try {
-      final Map<String, dynamic>? instruction = await _llmService.generateStructuredOutput(command);
+      final Map<String, dynamic>? instruction = await _puterService.executeCommand(trimmedCommand);
 
       if (instruction != null && instruction.isNotEmpty) {
-        debugPrint('LLM Instruction Received: $instruction'); // Added for debugging
-        if (instruction.containsKey('commandType')) {
-          switch (instruction['commandType']) {
-            case 'addWidget':
-              _handleAddWidgetCommand(instruction);
-              break;
-            case 'deleteWidget':
-              _handleDeleteWidgetCommand(instruction);
-              break;
-            case 'reorderWidget':
-              _handleReorderWidgetCommand(instruction);
-              break;
-            case 'navigation':
-              await _handleNavigationCommand(instruction);
-              break;
-            case 'layoutManagement':
-              await _handleLayoutCommand(instruction);
-              break;
-            default:
-              await _handlePresetCommand(instruction);
-              break;
-          }
-        } else {
-          bool handled = _applyInstructionToStaticComponent(instruction);
-          if (!handled) {
-            _handleDynamicWidgetModification(instruction);
-          }
-          _showMessage('Command applied successfully!');
+        final bool handled = await _applyInstructionBatch(instruction);
+        if (!handled) {
+          _showMessage('Could not understand the command. Please try rephrasing.', isError: true);
         }
       } else {
         _showMessage('Could not understand the command. Please try rephrasing.', isError: true);
       }
     } catch (e) {
-      debugPrint('Command processing error: $e'); // This is where it's caught
+      debugPrint('Command processing error: $e');
       _showMessage('Error processing command: ${e.toString()}', isError: true);
+    } finally {
+      setState(() => _isLoading = false);
+      if (clearInput) {
+        _commandController.clear();
+      }
+    }
+  }
+
+  Future<bool> _applyInstructionBatch(Map<String, dynamic> instruction) async {
+    final dynamic batchCommands = instruction['commands'] ?? instruction['instructions'];
+    if (batchCommands is List) {
+      int handledCount = 0;
+      for (final item in batchCommands) {
+        if (item is Map<String, dynamic>) {
+          await _applySingleInstruction(item);
+          handledCount += 1;
+        }
+      }
+      return handledCount > 0;
+    }
+
+    await _applySingleInstruction(instruction);
+    return true;
+  }
+
+  Future<void> _applySingleInstruction(Map<String, dynamic> instruction) async {
+    if (instruction.containsKey('commandType')) {
+      switch (instruction['commandType']) {
+        case 'addWidget':
+          _handleAddWidgetCommand(instruction);
+          break;
+        case 'modifyWidget':
+          _handleModifyWidgetCommand(instruction);
+          break;
+        case 'saveWidget':
+          await _handleSaveWidgetCommand(instruction);
+          break;
+        case 'loadWidget':
+          _handleLoadWidgetCommand(instruction);
+          break;
+        case 'deleteSavedWidget':
+          await _handleDeleteSavedWidgetCommand(instruction);
+          break;
+        case 'deleteWidget':
+          _handleDeleteWidgetCommand(instruction);
+          break;
+        case 'reorderWidget':
+          _handleReorderWidgetCommand(instruction);
+          break;
+        case 'navigation':
+          await _handleNavigationCommand(instruction);
+          break;
+        case 'layoutManagement':
+          await _handleLayoutCommand(instruction);
+          break;
+        case 'message':
+          _showMessage(instruction['message']?.toString() ?? 'Message received.');
+          break;
+        default:
+          await _handlePresetCommand(instruction);
+          break;
+      }
+      return;
+    }
+
+    final bool handled = _applyInstructionToStaticComponent(instruction);
+    if (!handled) {
+      final bool dynamicHandled = _handleDynamicWidgetModification(instruction);
+      if (dynamicHandled) {
+        _showMessage('Command applied successfully!');
+      }
+    } else {
+      _showMessage('Command applied successfully!');
+    }
+  }
+
+  Future<void> _handleFullScreenGeneration(String prompt) async {
+    await _processBatchPrompt(prompt);
+  }
+
+  Future<void> _processBatchPrompt(String prompt) async {
+    final trimmedPrompt = prompt.trim();
+    if (trimmedPrompt.isEmpty) {
+      _showMessage('Please enter a prompt', isError: true);
+      return;
+    }
+
+    if (!_commandHistory.contains(trimmedPrompt)) {
+      _commandHistory.insert(0, trimmedPrompt);
+      if (_commandHistory.length > 50) {
+        _commandHistory = _commandHistory.take(50).toList();
+      }
+      _saveCommandHistory();
+    }
+
+    _lastCommand = trimmedPrompt;
+    _historyIndex = -1;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final Map<String, dynamic>? instruction = await _puterService.executeBatchCommand(trimmedPrompt);
+
+      if (instruction == null || instruction.isEmpty) {
+        _showMessage('Could not understand the prompt. Please try rephrasing.', isError: true);
+        return;
+      }
+
+      if (instruction['commandType'] == 'message') {
+        _showMessage(instruction['message']?.toString() ?? 'Message received.');
+        return;
+      }
+
+      final bool handled = await _applyInstructionBatch(instruction);
+      if (!handled) {
+        _showMessage('Could not understand the prompt. Please try rephrasing.', isError: true);
+      }
+    } catch (e) {
+      debugPrint('Batch command processing error: $e');
+      _showMessage('Error processing prompt: ${e.toString()}', isError: true);
     } finally {
       setState(() => _isLoading = false);
       _commandController.clear();
     }
+  }
+
+  void _showFullScreenGenerationDialog() {
+    final TextEditingController promptController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog.fullscreen(
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Full Screen Generation'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  final prompt = promptController.text.trim();
+                  if (prompt.isEmpty) {
+                    _showMessage('Please enter a prompt', isError: true);
+                    return;
+                  }
+                  Navigator.of(context).pop();
+                  _handleFullScreenGeneration(prompt);
+                },
+                child: const Text('Generate'),
+              ),
+            ],
+          ),
+          body: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: promptController,
+                    maxLines: null,
+                    expands: true,
+                    decoration: const InputDecoration(
+                      hintText: 'Describe the full screen and list components, one per line if desired',
+                      border: OutlineInputBorder(),
+                    ),
+                    textInputAction: TextInputAction.newline,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      final prompt = promptController.text.trim();
+                      if (prompt.isEmpty) {
+                        _showMessage('Please enter a prompt', isError: true);
+                        return;
+                      }
+                      Navigator.of(context).pop();
+                      _handleFullScreenGeneration(prompt);
+                    },
+                    icon: const Icon(Icons.auto_awesome),
+                    label: const Text('Generate Components'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleModifyWidgetCommand(Map<String, dynamic> instruction) {
+    final String? rawComponent = instruction['component'] ?? instruction['widgetType'];
+    final String? rawProperty = instruction['property'];
+    final dynamic value = instruction['value'];
+    final String? operation = instruction['operation'];
+
+    if (rawComponent == null || rawProperty == null || value == null) {
+      _showMessage('Invalid modifyWidget command format.', isError: true);
+      return;
+    }
+
+    final String staticComponent = _normalizeStaticComponentName(rawComponent);
+    final String dynamicComponent = _normalizeDynamicComponentName(rawComponent);
+    final String staticProperty = _normalizePropertyName(staticComponent, rawProperty);
+    final String dynamicProperty = _normalizePropertyName(dynamicComponent, rawProperty);
+    final String rawComponentLower = rawComponent.trim().toLowerCase();
+    final bool prefersDynamic = rawComponentLower.contains('dynamic') || !_isStaticComponentName(staticComponent);
+
+    final bool hasDynamic = _dynamicWidgets.any((widget) {
+      final String type = widget['widgetType']?.toString().toLowerCase() ?? '';
+      return type == dynamicComponent.toLowerCase();
+    });
+
+    if (hasDynamic && (instruction.containsKey('targetIndex') || prefersDynamic)) {
+      final bool dynamicHandled = _handleDynamicWidgetModification({
+        'component': dynamicComponent,
+        'property': dynamicProperty,
+        'value': value,
+        'operation': operation,
+        'targetIndex': instruction['targetIndex'],
+      });
+      if (dynamicHandled) {
+        _showMessage('Command applied successfully!');
+      }
+      return;
+    }
+
+    final bool staticHandled = _applyInstructionToStaticComponent({
+      'component': staticComponent,
+      'property': staticProperty,
+      'value': value,
+      'operation': operation,
+    });
+
+    if (staticHandled) {
+      _showMessage('Command applied successfully!');
+      return;
+    }
+
+    final bool dynamicHandled = _handleDynamicWidgetModification({
+      'component': dynamicComponent,
+      'property': dynamicProperty,
+      'value': value,
+      'operation': operation,
+      if (instruction.containsKey('targetIndex')) 'targetIndex': instruction['targetIndex'],
+    });
+
+    if (dynamicHandled) {
+      _showMessage('Command applied successfully!');
+    }
+  }
+
+  Future<void> _handleSaveWidgetCommand(Map<String, dynamic> instruction) async {
+    final String widgetName = instruction['name']?.toString().trim() ??
+        instruction['widgetName']?.toString().trim() ??
+        '';
+    if (widgetName.isEmpty) {
+      _showMessage('Widget name is required', isError: true);
+      return;
+    }
+
+    final String? source = instruction['source']?.toString();
+    final bool hasComponent = instruction.containsKey('component');
+    final String? rawComponent = instruction['component']?.toString();
+    final String? widgetType = instruction['widgetType']?.toString();
+    final int? targetIndex = instruction['targetIndex'] is num ? instruction['targetIndex'].toInt() : null;
+
+    if (source == 'static' || hasComponent) {
+      final String component = _normalizeStaticComponentName(rawComponent ?? '');
+      if (_isStaticComponentName(component) || component == 'profileImage') {
+        await _saveStaticWidgetSnapshot(widgetName, component);
+        return;
+      }
+    }
+
+    if (source == 'dynamic' || widgetType != null || targetIndex != null) {
+      final widgetData = _findDynamicWidgetForSave(widgetType, targetIndex);
+      if (widgetData == null) {
+        _showMessage('No matching dynamic widget found', isError: true);
+        return;
+      }
+      await _saveDynamicWidgetInstance(widgetName, widgetData);
+      return;
+    }
+
+    if (_dynamicWidgets.isNotEmpty) {
+      await _saveDynamicWidgetInstance(widgetName, _dynamicWidgets.first);
+      return;
+    }
+
+    _showMessage('No widgets available to save', isError: true);
+  }
+
+  void _handleLoadWidgetCommand(Map<String, dynamic> instruction) {
+    final String widgetName = instruction['name']?.toString().trim() ??
+        instruction['widgetName']?.toString().trim() ??
+        '';
+    if (widgetName.isEmpty) {
+      _showMessage('Widget name is required', isError: true);
+      return;
+    }
+
+    if (_savedWidgets.isEmpty) {
+      _loadAllSavedWidgets();
+    }
+
+    Map<String, dynamic>? widgetData = _savedWidgets[widgetName];
+    String resolvedName = widgetName;
+    if (widgetData == null) {
+      final lowerName = widgetName.toLowerCase();
+      final matchKey = _savedWidgets.keys.firstWhere(
+        (key) => key.toLowerCase() == lowerName,
+        orElse: () => '',
+      );
+      if (matchKey.isNotEmpty) {
+        resolvedName = matchKey;
+        widgetData = _savedWidgets[matchKey];
+      }
+    }
+
+    if (widgetData != null) {
+      _addSavedWidgetToCanvas(resolvedName, widgetData);
+      _showSavedWidgetsDialog(focusName: resolvedName, autoCloseOnAdd: false);
+      return;
+    }
+
+    _showMessage('Saved widget "$widgetName" not found', isError: true);
+    _showSavedWidgetsDialog(focusName: null, autoCloseOnAdd: false);
+  }
+
+  Future<void> _handleDeleteSavedWidgetCommand(Map<String, dynamic> instruction) async {
+    final String widgetName = instruction['name']?.toString().trim() ??
+        instruction['widgetName']?.toString().trim() ??
+        '';
+    if (widgetName.isEmpty) {
+      _showMessage('Widget name is required', isError: true);
+      return;
+    }
+    await _deleteSavedWidget(widgetName);
+  }
+
+  Map<String, dynamic>? _findDynamicWidgetForSave(String? widgetType, int? targetIndex) {
+    if (_dynamicWidgets.isEmpty) {
+      return null;
+    }
+
+    if (widgetType != null) {
+      final int requestedIndex = (targetIndex ?? 1) <= 0 ? 0 : (targetIndex ?? 1) - 1;
+      int count = 0;
+      for (final widget in _dynamicWidgets) {
+        final String type = widget['widgetType']?.toString().toLowerCase() ?? '';
+        if (type == widgetType.toLowerCase()) {
+          if (count == requestedIndex) {
+            return widget;
+          }
+          count++;
+        }
+      }
+      return null;
+    }
+
+    if (targetIndex != null) {
+      final int index = targetIndex <= 0 ? 0 : targetIndex - 1;
+      if (index >= 0 && index < _dynamicWidgets.length) {
+        return _dynamicWidgets[index];
+      }
+    }
+
+    return _dynamicWidgets.first;
+  }
+
+  String _normalizeStaticComponentName(String rawComponent) {
+    final String normalized = rawComponent.trim().toLowerCase();
+    switch (normalized) {
+      case 'button':
+      case 'mainbutton':
+      case 'mainactionbutton':
+      case 'primarybutton':
+      case 'dynamicbutton':
+        return 'mainActionButton';
+      case 'colorbox':
+        return 'colorBox';
+      case 'progress':
+      case 'progressbar':
+      case 'progressindicator':
+        return 'progressIndicator';
+      case 'slider':
+        return 'slider';
+      case 'gallery':
+      case 'imagegallery':
+        return 'imageGallery';
+      case 'switch':
+      case 'toggle':
+      case 'toggleswitch':
+        return 'toggleSwitch';
+      case 'statictextfield':
+      case 'textfield':
+        return 'staticTextField';
+      case 'profile':
+      case 'profilecard':
+        return 'profileCard';
+      case 'profileimage':
+        return 'profileImage';
+      case 'nametext':
+        return 'nameText';
+      case 'titletext':
+        return 'titleText';
+      case 'biotext':
+        return 'bioText';
+      case 'maincolumn':
+        return 'mainColumn';
+      default:
+        return rawComponent;
+    }
+  }
+
+  String _normalizeDynamicComponentName(String rawComponent) {
+    final String normalized = rawComponent.trim().toLowerCase();
+    switch (normalized) {
+      case 'button':
+      case 'mainbutton':
+      case 'mainactionbutton':
+      case 'primarybutton':
+        return 'dynamicButton';
+      case 'dynamicbutton':
+        return 'dynamicButton';
+      case 'colorbox':
+        return 'colorBox';
+      case 'progress':
+      case 'progressbar':
+      case 'progressindicator':
+        return 'progressIndicator';
+      case 'slider':
+        return 'slider';
+      case 'gallery':
+      case 'imagegallery':
+        return 'imageGallery';
+      case 'switch':
+      case 'toggle':
+      case 'toggleswitch':
+        return 'toggleSwitch';
+      case 'textfield':
+      case 'statictextfield':
+        return 'textField';
+      case 'profile':
+      case 'profilecard':
+        return 'profileCard';
+      case 'profileimage':
+        return 'profileImage';
+      case 'nametext':
+        return 'nameText';
+      case 'titletext':
+        return 'titleText';
+      case 'biotext':
+        return 'bioText';
+      case 'maincolumn':
+        return 'mainColumn';
+      default:
+        return rawComponent;
+    }
+  }
+
+  bool _isStaticComponentName(String component) {
+    const Set<String> staticComponents = {
+      'profileCard',
+      'profileImage',
+      'nameText',
+      'titleText',
+      'bioText',
+      'colorBox',
+      'mainActionButton',
+      'toggleSwitch',
+      'slider',
+      'progressIndicator',
+      'imageGallery',
+      'mainColumn',
+      'staticTextField',
+    };
+    return staticComponents.contains(component);
+  }
+
+  String _normalizePropertyName(String component, String rawProperty) {
+    final String property = rawProperty.trim();
+    final String componentKey = component.toLowerCase();
+    if (componentKey == 'progressindicator') {
+      if (property == 'progressColor') return 'color';
+      if (property == 'progressBackgroundColor') return 'backgroundColor';
+    }
+    if (componentKey == 'statictextfield' && property == 'initialText') {
+      return 'content';
+    }
+    if ((componentKey == 'mainactionbutton' ||
+            componentKey == 'dynamicbutton' ||
+            componentKey == 'nametext' ||
+            componentKey == 'titletext' ||
+            componentKey == 'biotext' ||
+            componentKey == 'text') &&
+        property == 'text') {
+      return 'content';
+    }
+    return property;
   }
 
   Future<void> _handlePresetCommand(Map<String, dynamic> instruction) async {
@@ -900,23 +1636,28 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     });
   }
 
-  void _handleDynamicWidgetModification(Map<String, dynamic> instruction) {
-    final String? component = instruction['component'];
-    final String? property = instruction['property'];
+  bool _handleDynamicWidgetModification(Map<String, dynamic> instruction) {
+    final String? rawComponent = instruction['component'] ?? instruction['widgetType'];
+    final String? rawProperty = instruction['property'];
     final dynamic value = instruction['value'];
     final String? operation = instruction['operation'];
 
-    if (component == null || property == null || value == null) {
+    if (rawComponent == null || rawProperty == null || value == null) {
       _showMessage('Invalid instruction format for dynamic widget modification.', isError: true);
-      return;
+      return false;
     }
+
+    final String component = _normalizeDynamicComponentName(rawComponent);
+    final String property = _normalizePropertyName(component, rawProperty);
 
     int? targetIndexInList;
     if (instruction.containsKey('targetIndex') && instruction['targetIndex'] is num) {
-      int requestedIndex = instruction['targetIndex'].toInt() - 1;
+      final int rawIndex = instruction['targetIndex'].toInt();
+      final int requestedIndex = rawIndex <= 0 ? 0 : rawIndex - 1;
       int count = 0;
       for (int i = 0; i < _dynamicWidgets.length; i++) {
-        if (_dynamicWidgets[i]['widgetType'] == component) {
+        final String widgetType = _dynamicWidgets[i]['widgetType']?.toString().toLowerCase() ?? '';
+        if (widgetType == component.toLowerCase()) {
           if (count == requestedIndex) {
             targetIndexInList = i;
             break;
@@ -927,7 +1668,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     } else {
       // If no specific index, target the first found widget of that type
       for (int i = 0; i < _dynamicWidgets.length; i++) {
-        if (_dynamicWidgets[i]['widgetType'] == component) {
+        final String widgetType = _dynamicWidgets[i]['widgetType']?.toString().toLowerCase() ?? '';
+        if (widgetType == component.toLowerCase()) {
           targetIndexInList = i;
           break;
         }
@@ -1290,20 +2032,25 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
           _showMessage('Error modifying dynamic widget properties.', isError: true);
         }
       });
+      return true;
     } else {
       _showMessage('No dynamic widget of type "$component" at the specified index found to modify.', isError: true);
+      return false;
     }
   }
 
   bool _applyInstructionToStaticComponent(Map<String, dynamic> instruction) {
-    final String? component = instruction['component'];
-    final String? property = instruction['property'];
+    final String? rawComponent = instruction['component'] ?? instruction['widgetType'];
+    final String? rawProperty = instruction['property'];
     final dynamic value = instruction['value'];
     final String? operation = instruction['operation'];
 
-    if (component == null || property == null || value == null) {
+    if (rawComponent == null || rawProperty == null || value == null) {
       return false;
     }
+
+    final String component = _normalizeStaticComponentName(rawComponent);
+    final String property = _normalizePropertyName(component, rawProperty);
 
     bool handled = true;
 
@@ -2072,6 +2819,479 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     );
   }
 
+  void _showSaveWidgetDialog() {
+    final TextEditingController widgetNameController = TextEditingController();
+    String sourceType = 'dynamic';
+    int? selectedDynamicIndex = _dynamicWidgets.isEmpty ? null : 0;
+    final List<Map<String, String>> staticOptions = [
+      {'label': 'Profile Card', 'value': 'profileCard'},
+      {'label': 'Profile Image', 'value': 'profileImage'},
+      {'label': 'Name Text', 'value': 'nameText'},
+      {'label': 'Title Text', 'value': 'titleText'},
+      {'label': 'Bio Text', 'value': 'bioText'},
+      {'label': 'Color Box', 'value': 'colorBox'},
+      {'label': 'Main Button', 'value': 'mainActionButton'},
+      {'label': 'Toggle Switch', 'value': 'toggleSwitch'},
+      {'label': 'Slider', 'value': 'slider'},
+      {'label': 'Progress Indicator', 'value': 'progressIndicator'},
+      {'label': 'Image Gallery', 'value': 'imageGallery'},
+      {'label': 'Static Text Field', 'value': 'staticTextField'},
+      {'label': 'Main Column', 'value': 'mainColumn'},
+    ];
+    String selectedStaticComponent = staticOptions.first['value']!;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Save Widget'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: sourceType,
+                decoration: const InputDecoration(
+                  labelText: 'Widget source',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'dynamic', child: Text('Dynamic widget')),
+                  DropdownMenuItem(value: 'static', child: Text('Static widget')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setDialogState(() {
+                      sourceType = value;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              if (sourceType == 'dynamic')
+                DropdownButtonFormField<int>(
+                  value: selectedDynamicIndex,
+                  decoration: const InputDecoration(
+                    labelText: 'Select dynamic widget',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: List.generate(
+                    _dynamicWidgets.length,
+                    (index) {
+                      final widgetType = _dynamicWidgets[index]['widgetType']?.toString() ?? 'unknown';
+                      return DropdownMenuItem(
+                        value: index,
+                        child: Text('${index + 1}. $widgetType'),
+                      );
+                    },
+                  ),
+                  onChanged: _dynamicWidgets.isEmpty
+                      ? null
+                      : (value) {
+                          if (value != null) {
+                            setDialogState(() {
+                              selectedDynamicIndex = value;
+                            });
+                          }
+                        },
+                )
+              else
+                DropdownButtonFormField<String>(
+                  value: selectedStaticComponent,
+                  decoration: const InputDecoration(
+                    labelText: 'Select static widget',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: staticOptions
+                      .map(
+                        (option) => DropdownMenuItem(
+                          value: option['value'],
+                          child: Text(option['label'] ?? option['value']!),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() {
+                        selectedStaticComponent = value;
+                      });
+                    }
+                  },
+                ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: widgetNameController,
+                decoration: const InputDecoration(
+                  hintText: 'Enter widget name',
+                  border: OutlineInputBorder(),
+                ),
+                autofocus: true,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final String widgetName = widgetNameController.text.trim();
+                if (widgetName.isNotEmpty) {
+                  if (sourceType == 'dynamic') {
+                    if (_dynamicWidgets.isEmpty) {
+                      _showMessage('No dynamic widgets to save', isError: true);
+                      return;
+                    }
+                    if (selectedDynamicIndex == null) {
+                      _showMessage('Select a dynamic widget to save', isError: true);
+                      return;
+                    }
+                    final widgetData = _dynamicWidgets[selectedDynamicIndex!];
+                    _saveDynamicWidgetInstance(widgetName, widgetData);
+                  } else {
+                    _saveStaticWidgetSnapshot(widgetName, selectedStaticComponent);
+                  }
+                  Navigator.pop(context);
+                } else {
+                  _showMessage('Widget name cannot be empty', isError: true);
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSavedWidgetsDialog({String? focusName, bool autoCloseOnAdd = true}) {
+    _loadAllSavedWidgets();
+    if (_savedWidgets.isEmpty) {
+      _showMessage('No saved widgets found', isError: true);
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        final Map<String, Map<String, dynamic>> dialogWidgets = Map<String, Map<String, dynamic>>.from(_savedWidgets);
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text('Saved Widgets'),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 260,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: dialogWidgets.length,
+                itemBuilder: (context, index) {
+                  final widgetName = dialogWidgets.keys.elementAt(index);
+                  final widgetData = dialogWidgets[widgetName];
+                  final String kind = widgetData?['kind']?.toString() ?? (widgetData?['component'] != null ? 'static' : 'dynamic');
+                  final String widgetType = widgetData?['widgetType']?.toString() ?? '';
+                  final String component = widgetData?['component']?.toString() ?? '';
+                  final String subtitle = kind == 'static'
+                      ? 'static • ${component.isNotEmpty ? component : 'unknown'}'
+                      : 'dynamic • ${widgetType.isNotEmpty ? widgetType : 'unknown'}';
+                  final bool isFocused = focusName != null && widgetName == focusName;
+                  return Card(
+                    child: ListTile(
+                      title: Row(
+                        children: [
+                          if (isFocused)
+                            const Icon(Icons.star, color: Colors.amber, size: 16),
+                          if (isFocused) const SizedBox(width: 6),
+                          Expanded(child: Text(widgetName)),
+                        ],
+                      ),
+                      subtitle: Text(subtitle),
+                      leading: _buildSavedWidgetPreview(widgetData),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.add_circle_outline),
+                            onPressed: widgetData == null
+                                ? null
+                                : () {
+                                    _addSavedWidgetToCanvas(widgetName, widgetData);
+                                    if (autoCloseOnAdd) {
+                                      Navigator.pop(context);
+                                    }
+                                  },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              setDialogState(() {
+                                dialogWidgets.remove(widgetName);
+                              });
+                              _deleteSavedWidget(widgetName);
+                              if (dialogWidgets.isEmpty) {
+                                Navigator.pop(context);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      onTap: widgetData == null
+                          ? null
+                          : () {
+                              _addSavedWidgetToCanvas(widgetName, widgetData);
+                              if (autoCloseOnAdd) {
+                                Navigator.pop(context);
+                              }
+                            },
+                    ),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _addSavedWidgetToCanvas(String widgetName, Map<String, dynamic> widgetData) {
+    final String kind = widgetData['kind']?.toString() ?? (widgetData['component'] != null ? 'static' : 'dynamic');
+    final Map<String, dynamic> properties = widgetData['properties'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(widgetData['properties'])
+        : {};
+
+    if (kind == 'static') {
+      final String component = widgetData['component']?.toString() ?? '';
+      if (component.isEmpty) {
+        _showMessage('Saved widget "$widgetName" is invalid', isError: true);
+        return;
+      }
+      _applyStaticWidgetSnapshot(component, properties);
+      _showMessage('Applied widget "$widgetName"');
+      return;
+    }
+
+    final String widgetType = widgetData['widgetType']?.toString() ?? '';
+    if (widgetType.isEmpty) {
+      _showMessage('Saved widget "$widgetName" is invalid', isError: true);
+      return;
+    }
+
+    setState(() {
+      _dynamicWidgets.add({
+        'widgetType': widgetType,
+        'properties': properties,
+        'id': DateTime.now().microsecondsSinceEpoch,
+      });
+    });
+    _showMessage('Added widget "$widgetName"');
+  }
+
+  Widget _buildSavedWidgetPreview(Map<String, dynamic>? widgetData) {
+    if (widgetData == null) {
+      return const SizedBox(width: 48, height: 48);
+    }
+
+    final String kind = widgetData['kind']?.toString() ?? (widgetData['component'] != null ? 'static' : 'dynamic');
+    final Map<String, dynamic> properties = widgetData['properties'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(widgetData['properties'])
+        : {};
+    final Color borderColor = Theme.of(context).dividerColor;
+
+    Widget content;
+    if (kind == 'static') {
+      final String component = widgetData['component']?.toString() ?? '';
+      content = _buildStaticPreview(component, properties);
+    } else {
+      final String widgetType = widgetData['widgetType']?.toString() ?? '';
+      content = _buildDynamicPreview(widgetType, properties);
+    }
+
+    return Container(
+      width: 48,
+      height: 48,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        border: Border.all(color: borderColor),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(child: FittedBox(child: content)),
+    );
+  }
+
+  Widget _buildStaticPreview(String component, Map<String, dynamic> properties) {
+    switch (_normalizeStaticComponentName(component)) {
+      case 'profileCard':
+      case 'profileImage':
+        final String url = properties['profileImageUrl']?.toString() ?? '';
+        return CircleAvatar(
+          radius: 18,
+          backgroundImage: url.isNotEmpty ? NetworkImage(url) : null,
+          child: url.isEmpty ? const Icon(Icons.person, size: 18) : null,
+        );
+      case 'nameText':
+      case 'titleText':
+      case 'bioText':
+      case 'staticTextField':
+        return Text(
+          properties['content']?.toString() ?? 'Text',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 10,
+            color: color_parser.parseHexColor(properties['textColor'] ?? '0xFF000000'),
+          ),
+        );
+      case 'colorBox':
+        return Container(
+          width: 28,
+          height: 28,
+          color: color_parser.parseHexColor(properties['backgroundColor'] ?? '0xFF9C27B0'),
+        );
+      case 'mainActionButton':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          decoration: BoxDecoration(
+            color: color_parser.parseHexColor(properties['backgroundColor'] ?? '0xFF2196F3'),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            properties['content']?.toString() ?? 'Button',
+            style: TextStyle(
+              fontSize: 8,
+              color: color_parser.parseHexColor(properties['textColor'] ?? '0xFFFFFFFF'),
+            ),
+          ),
+        );
+      case 'toggleSwitch':
+        return Icon(
+          (properties['value'] ?? false) == true ? Icons.toggle_on : Icons.toggle_off,
+          size: 24,
+          color: color_parser.parseHexColor(properties['activeColor'] ?? '0xFF4CAF50'),
+        );
+      case 'slider':
+        return SizedBox(
+          width: 32,
+          child: LinearProgressIndicator(
+            value: ((properties['value'] ?? 0.5) as num).toDouble().clamp(0.0, 1.0),
+            color: color_parser.parseHexColor(properties['activeColor'] ?? '0xFF2196F3'),
+            backgroundColor: color_parser.parseHexColor(properties['inactiveColor'] ?? '0xFF9E9E9E'),
+          ),
+        );
+      case 'progressIndicator':
+        return SizedBox(
+          width: 32,
+          child: LinearProgressIndicator(
+            value: ((properties['value'] ?? 0.5) as num).toDouble().clamp(0.0, 1.0),
+            color: color_parser.parseHexColor(properties['color'] ?? '0xFF2196F3'),
+            backgroundColor: color_parser.parseHexColor(properties['backgroundColor'] ?? '0xFFE0E0E0'),
+          ),
+        );
+      case 'imageGallery':
+        final List<dynamic> urls = properties['imageUrls'] is List<dynamic> ? properties['imageUrls'] : [];
+        final String url = urls.isNotEmpty ? urls.first.toString() : '';
+        return url.isNotEmpty
+            ? Image.network(url, width: 28, height: 28, fit: BoxFit.cover)
+            : const Icon(Icons.photo, size: 18);
+      case 'mainColumn':
+        return const Icon(Icons.view_column, size: 18);
+      default:
+        return const Icon(Icons.widgets, size: 18);
+    }
+  }
+
+  Widget _buildDynamicPreview(String widgetType, Map<String, dynamic> properties) {
+    switch (widgetType) {
+      case 'dynamicButton':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          decoration: BoxDecoration(
+            color: color_parser.parseHexColor(properties['backgroundColor'] ?? '0xFF2196F3'),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            properties['content']?.toString() ?? 'Button',
+            style: TextStyle(
+              fontSize: 8,
+              color: color_parser.parseHexColor(properties['textColor'] ?? '0xFFFFFFFF'),
+            ),
+          ),
+        );
+      case 'colorBox':
+        return Container(
+          width: 28,
+          height: 28,
+          color: color_parser.parseHexColor(properties['backgroundColor'] ?? '0xFF9C27B0'),
+        );
+      case 'text':
+        return Text(
+          properties['content']?.toString() ?? 'Text',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 10,
+            color: color_parser.parseHexColor(properties['textColor'] ?? '0xFF000000'),
+          ),
+        );
+      case 'toggleSwitch':
+        return Icon(
+          (properties['value'] ?? false) == true ? Icons.toggle_on : Icons.toggle_off,
+          size: 24,
+          color: color_parser.parseHexColor(properties['activeColor'] ?? '0xFF4CAF50'),
+        );
+      case 'slider':
+        return SizedBox(
+          width: 32,
+          child: LinearProgressIndicator(
+            value: ((properties['value'] ?? 0.5) as num).toDouble().clamp(0.0, 1.0),
+            color: color_parser.parseHexColor(properties['activeColor'] ?? '0xFF2196F3'),
+            backgroundColor: color_parser.parseHexColor(properties['inactiveColor'] ?? '0xFF9E9E9E'),
+          ),
+        );
+      case 'progressIndicator':
+        return SizedBox(
+          width: 32,
+          child: LinearProgressIndicator(
+            value: ((properties['value'] ?? 0.5) as num).toDouble().clamp(0.0, 1.0),
+            color: color_parser.parseHexColor(properties['color'] ?? '0xFF2196F3'),
+            backgroundColor: color_parser.parseHexColor(properties['backgroundColor'] ?? '0xFFE0E0E0'),
+          ),
+        );
+      case 'textField':
+        return const Icon(Icons.text_fields, size: 18);
+      case 'dynamicImage':
+        final String url = properties['imageUrl']?.toString() ?? '';
+        return url.isNotEmpty
+            ? Image.network(url, width: 28, height: 28, fit: BoxFit.cover)
+            : const Icon(Icons.image, size: 18);
+      case 'dynamicCard':
+        return Container(
+          width: 28,
+          height: 18,
+          decoration: BoxDecoration(
+            color: color_parser.parseHexColor(properties['backgroundColor'] ?? '0xFFFFFFFF'),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.black12),
+          ),
+        );
+      case 'dynamicIcon':
+        return Icon(Icons.star, size: 18, color: color_parser.parseHexColor(properties['color'] ?? '0xFF000000'));
+      case 'dynamicDivider':
+        return Container(
+          width: 28,
+          height: 2,
+          color: color_parser.parseHexColor(properties['color'] ?? '0xFFE0E0E0'),
+        );
+      default:
+        return const Icon(Icons.widgets, size: 18);
+    }
+  }
+
   Future<void> _deletePreset(String presetName) async {
     try {
       await _prefs.remove('preset_$presetName');
@@ -2148,6 +3368,21 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
             icon: const Icon(Icons.folder_open_outlined),
             tooltip: 'Load Layout',
             onPressed: _showLoadPresetDialog,
+          ),
+          IconButton(
+            icon: const Icon(Icons.bookmark_add_outlined),
+            tooltip: 'Save Widget',
+            onPressed: _showSaveWidgetDialog,
+          ),
+          IconButton(
+            icon: const Icon(Icons.collections_bookmark_outlined),
+            tooltip: 'Saved Widgets',
+            onPressed: _showSavedWidgetsDialog,
+          ),
+          IconButton(
+            icon: const Icon(Icons.auto_awesome),
+            tooltip: 'Full Screen Generate',
+            onPressed: _showFullScreenGenerationDialog,
           ),
           IconButton(
             icon: const Icon(Icons.refresh_outlined),

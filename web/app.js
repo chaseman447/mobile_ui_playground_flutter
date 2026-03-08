@@ -21,8 +21,9 @@ class AIService {
     }
 
     async generateStyling(prompt, currentProperties) {
-        if (!this.getApiKey()) {
-            // Provide a fallback response when no API key is configured
+        // Use Puter.js AI instead of OpenRouter
+        if (typeof puter === 'undefined' || !puter.ai || !puter.ai.chat) {
+            console.log('Puter.js not available, using fallback styling');
             return this.getFallbackStyling(prompt, currentProperties);
         }
 
@@ -46,30 +47,16 @@ Supported properties include:
 Return format: {"backgroundColor": "#color", "color": "#color", "borderRadius": "value", etc.}`;
 
         try {
-            const response = await fetch(this.apiEndpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.getApiKey()}`
-                },
-                body: JSON.stringify({
-                    model: this.model,
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: prompt }
-                    ],
-                    max_tokens: 200,
-                    temperature: 0.7
-                })
+            console.log('Using Puter.js AI for styling...');
+            
+            const response = await puter.ai.chat(prompt, {
+                model: 'gpt-4o',
+                system: systemPrompt,
+                temperature: 0.7
             });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(`AI API error (${response.status}): ${errorData.error?.message || 'Unknown error'}`);
-            }
-
-            const data = await response.json();
-            const content = data.choices[0].message.content.trim();
+            
+            const content = response.toString().trim();
+            console.log('Puter.js AI response:', content);
             
             // Parse JSON response
             try {
@@ -83,7 +70,7 @@ Return format: {"backgroundColor": "#color", "color": "#color", "borderRadius": 
                 throw new Error('Invalid AI response format');
             }
         } catch (error) {
-            console.error('AI styling error:', error);
+            console.error('Puter.js AI styling error:', error);
             // Return fallback styling on error
             return this.getFallbackStyling(prompt, currentProperties);
         }
